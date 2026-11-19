@@ -104,7 +104,7 @@ def test_real_kernel_init_and_solve_performance(tmp_path: Path) -> None:
     )
     solve_ms = (time.perf_counter() - t0) * 1000.0
     assert solve_res["status"] == "ok"
-    assert solve_ms < 2000.0
+    assert solve_ms < 500.0
 
     # Check git cleanliness inside linux/
     git_proc = subprocess.run(

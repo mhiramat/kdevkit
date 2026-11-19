@@ -232,7 +232,7 @@ def eval_expr_trival(
         s = str(val)
         if s in ("y", "m", "n"):
             return s
-        return values.get(s, "n")
+        return values.get(s, s)
 
     while stack:
         node, processed = stack.pop()

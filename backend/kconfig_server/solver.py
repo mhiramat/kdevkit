@@ -8,7 +8,7 @@ import logging
 import time
 
 from pysat.examples.rc2 import RC2
-from pysat.formula import WCNF
+from pysat.formula import IDPool, WCNF
 from pysat.solvers import Solver
 
 from .models import (
@@ -57,6 +57,13 @@ class KconfigSolver:
     def __init__(self, ir: KconfigIR, encoder: SATEncoder) -> None:
         self.ir = ir
         self.encoder = encoder
+        # Pre-populate is_m literals for tristate symbols so base_hard_clauses is finalized
+        for sym_name, sym_ir in self.ir.symbols.items():
+            if sym_ir.sym_type == SymType.TRISTATE:
+                self.encoder.is_m(sym_name)
+        self._fast_solver = Solver(
+            name=SOLVER_NAME, bootstrap_with=self.encoder.base_hard_clauses
+        )
 
     def solve(
         self,
@@ -89,14 +96,30 @@ class KconfigSolver:
             normalized_requests.append((sym_name, tri_val))
             requested_syms[sym_name] = tri_val
 
-        # Fast check with assumption-based SAT solver first to detect conflicts immediately
-        sat_ok, conflicts, diagnostics = self._check_sat_and_extract_core(
-            normalized_requests,
-            current_values,
-            pinned_map,
-            ignore_pins=ignore_pins,
-        )
-        if not sat_ok:
+        # Fast check with persistent assumption-based SAT solver (~2ms)
+        fast_assumptions: list[int] = [
+            self.encoder.val_lit(sym_name, tri_val)
+            for sym_name, tri_val in normalized_requests
+        ]
+        if not ignore_pins:
+            for sym_name, pin_info in pinned_map.items():
+                if (
+                    sym_name in self.ir.symbols
+                    and self.ir.symbols[sym_name].sym_type.is_bool_or_tristate
+                ):
+                    try:
+                        pin_tri = TriVal.from_str(pin_info.value)
+                        fast_assumptions.append(self.encoder.val_lit(sym_name, pin_tri))
+                    except ValueError:
+                        continue
+
+        if not self._fast_solver.solve(assumptions=fast_assumptions):
+            _, conflicts, diagnostics = self._check_sat_and_extract_core(
+                normalized_requests,
+                current_values,
+                pinned_map,
+                ignore_pins=ignore_pins,
+            )
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
             return SolveResult(
                 status="conflict",
@@ -105,10 +128,10 @@ class KconfigSolver:
                 diagnostics=tuple(diagnostics),
             )
 
-        # Build WCNF for Weighted Partial MaxSAT optimization
+        # Build WCNF for Weighted Partial MaxSAT optimization (fast bulk copy)
         wcnf = WCNF()
-        for clause in self.encoder.base_hard_clauses:
-            wcnf.append(clause)
+        wcnf.hard = list(self.encoder.base_hard_clauses)
+        wcnf.nv = self.encoder.pool.top
 
         for sym_name, tri_val in normalized_requests:
             self._append_unit_hard_constraint(wcnf, sym_name, tri_val)
@@ -128,7 +151,8 @@ class KconfigSolver:
                     active_pins.add(sym_name)
 
         # Soft clauses (tiered weights)
-        # Pre-allocate any needed is_m helper clauses before copying or right now
+        soft_clauses = wcnf.soft
+        soft_weights = wcnf.wght
         for sym_name, sym_ir in self.ir.symbols.items():
             if not sym_ir.sym_type.is_bool_or_tristate:
                 continue
@@ -139,28 +163,35 @@ class KconfigSolver:
             if sym_name in user_injected_map:
                 try:
                     inj_tri = TriVal.from_str(user_injected_map[sym_name])
-                    lit = self._get_val_lit_with_clauses(wcnf, sym_name, inj_tri)
-                    wcnf.append([lit], weight=100)
+                    soft_clauses.append([self.encoder.val_lit(sym_name, inj_tri)])
+                    soft_weights.append(100)
                     continue
                 except ValueError:
                     pass
 
             cur_str = current_values.get(sym_name, "n")
-            try:
-                cur_tri = TriVal.from_str(cur_str)
-            except ValueError:
-                cur_tri = TriVal.N
-
-            if cur_tri in (TriVal.Y, TriVal.M):
-                # Tier 2 (Weight 10): Preserve currently enabled (y/m) symbols
-                lit = self._get_val_lit_with_clauses(wcnf, sym_name, cur_tri)
-                wcnf.append([lit], weight=10)
+            if cur_str == "y":
+                # Tier 2 (Weight 10): Preserve currently enabled (y) symbols
+                soft_clauses.append([self.encoder.is_y(sym_name)])
+                soft_weights.append(10)
+            elif cur_str == "m":
+                # Tier 2 (Weight 10): Preserve currently enabled (m) symbols
+                soft_clauses.append([self.encoder.is_m(sym_name)])
+                soft_weights.append(10)
             else:
                 # Tier 3 (Weight 1): Keep currently disabled (n) symbols as n
-                wcnf.append([-self.encoder.ge_m(sym_name)], weight=1)
+                soft_clauses.append([-self.encoder.ge_m(sym_name)])
+                soft_weights.append(1)
+
+        # Set nv=0 before RC2.__init__ to skip building the 65k identity vmap dict,
+        # then call compute_() and fetch oracle.get_model() directly.
+        wcnf.nv = 0
+        wcnf.topw = sum(soft_weights) + 1
 
         with RC2(wcnf, solver=SOLVER_NAME) as rc2:
-            model = rc2.compute()
+            rc2.pool = IDPool(start_from=self.encoder.pool.top + 1)
+            sat_res = rc2.compute_()
+            model = rc2.oracle.get_model() if sat_res else None
 
         if model is None:
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
@@ -240,22 +271,12 @@ class KconfigSolver:
         self, wcnf: WCNF, sym_name: str, tri_val: TriVal
     ) -> None:
         if tri_val == TriVal.Y:
-            wcnf.append([self.encoder.is_y(sym_name)])
+            wcnf.hard.append([self.encoder.is_y(sym_name)])
         elif tri_val == TriVal.M:
-            wcnf.append([self.encoder.ge_m(sym_name)])
-            wcnf.append([-self.encoder.is_y(sym_name)])
+            wcnf.hard.append([self.encoder.ge_m(sym_name)])
+            wcnf.hard.append([-self.encoder.is_y(sym_name)])
         else:
-            wcnf.append([-self.encoder.ge_m(sym_name)])
-
-    def _get_val_lit_with_clauses(
-        self, wcnf: WCNF, sym_name: str, tri_val: TriVal
-    ) -> int:
-        prev_len = len(self.encoder.base_hard_clauses)
-        lit = self.encoder.val_lit(sym_name, tri_val)
-        if len(self.encoder.base_hard_clauses) > prev_len:
-            for cl in self.encoder.base_hard_clauses[prev_len:]:
-                wcnf.append(cl)
-        return lit
+            wcnf.hard.append([-self.encoder.ge_m(sym_name)])
 
     def _check_sat_and_extract_core(
         self,

@@ -120,7 +120,7 @@ def probe_kbuild_env(
 
     probe_makefile = (
         "include Makefile\n"
-        "print-kconfig-env:\n"
+        "help-kconfig-env:\n"
         "\t@python3 -c 'import os, json; print(json.dumps(dict(os.environ)))'\n"
     )
 
@@ -129,13 +129,14 @@ def probe_kbuild_env(
         proc = subprocess.run(
             [
                 "make",
+                "--no-print-directory",
                 "-C",
                 str(kernel_dir),
                 f"ARCH={arch}",
                 "-s",
                 "-f",
                 "-",
-                "print-kconfig-env",
+                "help-kconfig-env",
             ],
             input=probe_makefile,
             text=True,

@@ -33,6 +33,17 @@ from .models import (
 
 sys.setrecursionlimit(max(sys.getrecursionlimit(), 10000))
 
+# Support Linux 6.14+ 'transitional' Kconfig symbol keyword in kconfiglib
+_ORIG_PARSE_ASSIGNMENT = getattr(kconfiglib.Kconfig, "_parse_assignment", None)
+if _ORIG_PARSE_ASSIGNMENT is not None:
+
+    def _patched_parse_assignment(self: Any, s: str) -> None:
+        if s.strip() == "transitional":
+            return
+        _ORIG_PARSE_ASSIGNMENT(self, s)
+
+    kconfiglib.Kconfig._parse_assignment = _patched_parse_assignment  # type: ignore[method-assign]
+
 _KCONFIGLIB_TYPE_MAP: dict[int, SymType] = {
     kconfiglib.BOOL: SymType.BOOL,
     kconfiglib.TRISTATE: SymType.TRISTATE,
@@ -65,7 +76,7 @@ def _temp_environ(overrides: dict[str, str]) -> Iterator[None]:
 
 def _translate_cmp_operand(item: Any) -> tuple[str | int, bool]:
     if isinstance(item, kconfiglib.Symbol):
-        if item.is_constant:
+        if item.is_constant or not item.nodes:
             return item.name, False
         return item.name, True
     if isinstance(item, kconfiglib.Choice):
@@ -204,7 +215,8 @@ def load_kconfig(
                 choice_id_by_sym[m_sym.name] = cid
 
         c_defaults: list[tuple[str, ExprIR]] = []
-        for def_sym, cond in choice.defaults:
+        for def_item in choice.defaults:
+            def_sym, cond = def_item[0], def_item[1]
             if isinstance(def_sym, kconfiglib.Symbol) and def_sym.name:
                 c_defaults.append((def_sym.name, _translate_expr(kconf, cond)))
 
@@ -249,19 +261,22 @@ def load_kconfig(
                 help_chunks.append(node.help.strip())
 
         selects: list[tuple[str, ExprIR]] = []
-        for target_sym, cond_raw in sym.selects:
+        for sel_item in sym.selects:
+            target_sym, cond_raw = sel_item[0], sel_item[1]
             if isinstance(target_sym, kconfiglib.Symbol) and target_sym.name:
                 cond_ir = _translate_expr(kconf, cond_raw)
                 selects.append((target_sym.name, cond_ir))
                 reverse_selects_map[target_sym.name].append((sym.name, cond_ir))
 
         implies: list[tuple[str, ExprIR]] = []
-        for target_sym, cond_raw in sym.implies:
+        for imp_item in sym.implies:
+            target_sym, cond_raw = imp_item[0], imp_item[1]
             if isinstance(target_sym, kconfiglib.Symbol) and target_sym.name:
                 implies.append((target_sym.name, _translate_expr(kconf, cond_raw)))
 
         defaults: list[tuple[ExprIR | str, ExprIR]] = []
-        for val_raw, cond_raw in sym.defaults:
+        for def_item in sym.defaults:
+            val_raw, cond_raw = def_item[0], def_item[1]
             cond_ir = _translate_expr(kconf, cond_raw)
             if s_type.is_bool_or_tristate:
                 val_ir: ExprIR | str = _translate_expr(kconf, val_raw)
