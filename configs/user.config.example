@@ -1,0 +1,7 @@
+# Example user Kconfig fragment
+# Copy to configs/user.config or pass to scripts/configure.sh:
+#   ./scripts/configure.sh configs/user.config
+#
+# Example entries:
+# CONFIG_SAMPLE_KPROBES=m
+# CONFIG_KPROBES_SANITY_TEST=y

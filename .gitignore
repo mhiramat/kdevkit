@@ -1,0 +1,13 @@
+# Upstream Linux kernel tree(s)
+/linux/
+/linux-*/
+
+# Out-of-tree build artifacts
+/build/
+
+# Generated clangd configuration (materialized by scripts/configure.sh)
+/.clangd
+/.cache/
+
+# Local user config fragment
+/configs/user.config
