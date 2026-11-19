@@ -9,6 +9,7 @@ import {
   WebviewToHostMessage,
 } from '../shared/protocol';
 import { ResolvedWorkspacePaths } from '../shared/workspacePaths';
+import { linkInjectedConfigLayer } from './layerInjection';
 import { KconfigRpcClient, RpcRemoteError } from './rpcClient';
 
 export class KconfigPanelController implements vscode.Disposable {
@@ -308,13 +309,22 @@ export class KconfigPanelController implements vscode.Disposable {
   private async pickAndInjectLayer(
     copyIntoWorkspace: boolean
   ): Promise<{ canceled: boolean; layers?: ConfigLayer[]; baseTarget?: string }> {
+    const selftestsDir = path.join(this.paths.kernelDir, 'tools', 'testing', 'selftests');
+    const defaultUri = fs.existsSync(selftestsDir)
+      ? vscode.Uri.file(selftestsDir)
+      : vscode.Uri.file(this.paths.workspaceRoot);
+
+    // Note: VSCode's showOpenDialog converts filter extensions to '*.<ext>', which on
+    // Linux/GTK hides extensionless 'config' files (such as tools/testing/selftests/*/config).
+    // Putting '*' first ensures extensionless 'config' files are visible immediately.
     const picked = await vscode.window.showOpenDialog({
-      title: 'Select Kconfig Fragment to Inject',
+      title: 'Select Kconfig Fragment (e.g. tools/testing/selftests/*/config or *.config)',
+      defaultUri,
       canSelectMany: false,
       openLabel: 'Inject Config Layer',
       filters: {
-        'Kernel Config': ['config', 'cfg', 'fragment'],
-        'All Files': ['*'],
+        'Kconfig Files (config, *.config)': ['*'],
+        '*.config / *.cfg / *.fragment': ['config', 'cfg', 'fragment'],
       },
     });
 
@@ -324,44 +334,32 @@ export class KconfigPanelController implements vscode.Disposable {
 
     const srcFile = picked[0].fsPath;
     const baseName = path.basename(srcFile);
-    let storedRelPath: string;
-
-    if (copyIntoWorkspace) {
-      fs.mkdirSync(this.paths.userInjectedDir, { recursive: true });
-      const destFile = path.join(this.paths.userInjectedDir, baseName);
-      if (path.resolve(srcFile) !== path.resolve(destFile)) {
-        fs.copyFileSync(srcFile, destFile);
-      }
-      storedRelPath = path.relative(this.paths.workspaceRoot, destFile).replace(/\\/g, '/');
-    } else {
-      const rel = path.relative(this.paths.workspaceRoot, srcFile);
-      storedRelPath = rel.startsWith('..') ? srcFile : rel.replace(/\\/g, '/');
+    if (
+      baseName !== 'config' &&
+      !baseName.endsWith('.config') &&
+      !baseName.endsWith('.cfg') &&
+      !baseName.endsWith('.fragment')
+    ) {
+      throw new Error(
+        `Invalid config filename '${baseName}': only 'config' or '*.config' / '*.cfg' / '*.fragment' files are allowed.`
+      );
     }
 
     const currentLayersInfo = await this.rpcClient.getLayers();
     const baseTarget = currentLayersInfo.baseTarget || currentLayersInfo.base_target || 'defconfig';
-    const rawId = baseName.replace(/\.(config|cfg|fragment)$/i, '').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const layerId = rawId || `user_${Date.now()}`;
 
-    const newLayer: ConfigLayer = {
-      id: layerId,
-      path: storedRelPath,
-      enabled: true,
-      pinned: false,
-      readonly: false,
-    };
-
-    const existingLayers = currentLayersInfo.layers.filter((l) => l.id !== layerId);
-    const solverIdx = existingLayers.findIndex((l) => l.id === 'solver');
-    if (solverIdx >= 0) {
-      existingLayers.splice(solverIdx, 0, newLayer);
-    } else {
-      existingLayers.push(newLayer);
-    }
+    const { updatedLayers } = linkInjectedConfigLayer({
+      srcFile,
+      workspaceRoot: this.paths.workspaceRoot,
+      kernelDir: this.paths.kernelDir,
+      userInjectedDir: this.paths.userInjectedDir,
+      existingLayers: currentLayersInfo.layers,
+      linkIntoWorkspace: copyIntoWorkspace,
+    });
 
     const updated = await this.rpcClient.setLayers({
       baseTarget,
-      layers: existingLayers,
+      layers: updatedLayers,
       runConfigure: false,
     });
 

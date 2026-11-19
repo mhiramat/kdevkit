@@ -17,6 +17,7 @@
   "include": [
     "src/**/*.ts",
     "test/unit/rpcClient.test.ts",
+    "test/unit/layerInjection.test.ts",
     "test/integration/**/*.ts",
     "test/e2e/**/*.ts"
   ],
