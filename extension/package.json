@@ -1,0 +1,92 @@
+{
+  "name": "linux-kernel-dev",
+  "displayName": "Linux Kernel Dev Suite",
+  "description": "VSCode Linux Kernel Development Suite (Kconfig SAT Solver, Kprobes & Selftests)",
+  "version": "0.1.0",
+  "publisher": "kdev",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCommand:kdev.openKconfigEditor",
+    "onCommand:kdev.restartKconfigBackend",
+    "onView:kdev.overview"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Linux Kernel Dev",
+      "properties": {
+        "kdev.kernelSrcDir": {
+          "type": "string",
+          "default": "linux",
+          "description": "Path to the Linux kernel source directory relative to workspace root."
+        },
+        "kdev.buildDir": {
+          "type": "string",
+          "default": "build/current",
+          "description": "Path to the out-of-tree kernel build directory relative to workspace root."
+        },
+        "kdev.arch": {
+          "type": "string",
+          "default": "x86_64",
+          "description": "Target kernel architecture."
+        },
+        "kdev.layersFile": {
+          "type": "string",
+          "default": "configs/layers.json",
+          "description": "Path to the declarative Kconfig layers JSON manifest."
+        },
+        "kdev.pythonPath": {
+          "type": "string",
+          "default": "backend/.venv/bin/python",
+          "description": "Path to the Python interpreter with kconfig_server installed."
+        },
+        "kdev.autoRestartClangd": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically restart clangd after applying Kconfig changes."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "kdev.openKconfigEditor",
+        "title": "Kernel Dev: Open Kconfig Editor",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "kdev.restartKconfigBackend",
+        "title": "Kernel Dev: Restart Kconfig Backend"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.webview.json --noEmit",
+    "test:unit": "vitest run test/unit",
+    "test:ipc": "vitest run test/integration",
+    "test:ipc:real": "REAL_KERNEL=1 vitest run test/integration",
+    "test:e2e": "node ./dist/test/e2e/runTest.js",
+    "test:all": "npm run typecheck && npm run build && npm run test:unit && npm run test:ipc"
+  },
+  "dependencies": {
+    "@vscode/codicons": "^0.0.36",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/react": "^16.0.0",
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.4.1",
+    "esbuild": "^0.23.0",
+    "jsdom": "^24.1.1",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

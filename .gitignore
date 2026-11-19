@@ -21,3 +21,8 @@
 /backend/.ruff_cache/
 __pycache__/
 *.py[cod]
+
+# VSCode Extension frontend build & dependencies
+/extension/node_modules/
+/extension/dist/
+/extension/.vscode-test/
