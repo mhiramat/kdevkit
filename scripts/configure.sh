@@ -13,7 +13,8 @@ fi
 
 mkdir -p "${BUILD_DIR}" "${SHARED_DIR}"
 
-USER_CONFIGS=()
+PASSED_CONFIGS=()
+EXPLICIT_LAYER_LIST="${KCONFIG_EXPLICIT_LAYERS:-0}"
 for arg in "$@"; do
   if [ -n "${arg}" ]; then
     if [[ "${arg}" = /* ]]; then
@@ -22,15 +23,35 @@ for arg in "$@"; do
       CFG_PATH="${WS_ROOT}/${arg}"
     fi
     if [ ! -f "${CFG_PATH}" ]; then
-      echo "Error: User config fragment not found: ${CFG_PATH}" >&2
+      echo "Error: Config fragment not found: ${CFG_PATH}" >&2
       exit 1
     fi
-    USER_CONFIGS+=("${CFG_PATH}")
+    if [[ "${CFG_PATH}" == */configs/qemu.config ]] || \
+       [[ "${CFG_PATH}" == */configs/trace.config ]] || \
+       [[ "${CFG_PATH}" == */configs/solver_overlay.config ]]; then
+      EXPLICIT_LAYER_LIST=1
+    fi
+    PASSED_CONFIGS+=("${CFG_PATH}")
   fi
 done
 
-if [ ${#USER_CONFIGS[@]} -eq 0 ] && [ -f "${WS_ROOT}/configs/user.config" ]; then
-  USER_CONFIGS+=("${WS_ROOT}/configs/user.config")
+if [ "${EXPLICIT_LAYER_LIST}" -eq 1 ]; then
+  MERGE_FRAGMENTS=("${PASSED_CONFIGS[@]}")
+else
+  MERGE_FRAGMENTS=(
+    "${WS_ROOT}/configs/qemu.config"
+    "${WS_ROOT}/configs/trace.config"
+  )
+  if [ ${#PASSED_CONFIGS[@]} -gt 0 ]; then
+    MERGE_FRAGMENTS+=("${PASSED_CONFIGS[@]}")
+  else
+    if [ -f "${WS_ROOT}/configs/user.config" ]; then
+      MERGE_FRAGMENTS+=("${WS_ROOT}/configs/user.config")
+    fi
+    if [ -f "${WS_ROOT}/configs/solver_overlay.config" ]; then
+      MERGE_FRAGMENTS+=("${WS_ROOT}/configs/solver_overlay.config")
+    fi
+  fi
 fi
 
 EXTRA_MAKE_ARGS=()
@@ -50,9 +71,7 @@ echo "==> [2/4] Merging layered Kconfig fragments"
   cd "${KERNEL_DIR}"
   ./scripts/kconfig/merge_config.sh -m -O "${BUILD_DIR}" \
     "${BUILD_DIR}/.config" \
-    "${WS_ROOT}/configs/qemu.config" \
-    "${WS_ROOT}/configs/trace.config" \
-    "${USER_CONFIGS[@]}"
+    "${MERGE_FRAGMENTS[@]}"
 )
 
 echo "==> [3/4] Running olddefconfig and syncconfig (updating autoconf.h)"

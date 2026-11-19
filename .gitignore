@@ -11,3 +11,13 @@
 
 # Local user config fragment
 /configs/user.config
+
+# Python Kconfig backend virtualenv & caches
+/backend/.venv/
+/backend/*.egg-info/
+/backend/build/
+/backend/.pytest_cache/
+/backend/.mypy_cache/
+/backend/.ruff_cache/
+__pycache__/
+*.py[cod]

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kconfig-server"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "python-sat[pblib,aiger]>=1.8.dev13",
+    "kconfiglib @ git+https://github.com/zephyrproject-rtos/Kconfiglib.git",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "mypy>=1.10",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+kconfig-server = "kconfig_server.main:cli_main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kconfig_server*"]
