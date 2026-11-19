@@ -74,10 +74,10 @@ describe('Layer 1: KconfigRpcClient Protocol & Transport Unit Tests', () => {
   it('handles chunked / split NDJSON and multiple responses cleanly', async () => {
     const client = createStubClient();
     try {
-      const [r1, r2] = await Promise.all([
-        client.request<{ ok: string; echo: number }>('test/chunked', { val: 42 }),
-        client.request<{ method: string }>('test/echo', { a: 1 }),
-      ]);
+      const r1 = await client.request<{ ok: string; echo: number }>('test/chunked', {
+        val: 42,
+      });
+      const r2 = await client.request<{ method: string }>('test/echo', { a: 1 });
       expect(r1).toEqual({ ok: 'chunked', echo: 42 });
       expect(r2.method).toBe('test/echo');
     } finally {

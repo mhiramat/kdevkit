@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React from 'react';
+import React, { act } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -10,7 +10,9 @@ import { App } from '../../webview-ui/src/App';
 import { setMockVsCodeApi } from '../../webview-ui/src/vscodeApi';
 
 function dispatchHostMessage(msg: HostToWebviewMessage) {
-  window.dispatchEvent(new MessageEvent('message', { data: msg }));
+  act(() => {
+    window.dispatchEvent(new MessageEvent('message', { data: msg }));
+  });
 }
 
 describe('Layer 3b: Webview React Component Interaction Tests', () => {
