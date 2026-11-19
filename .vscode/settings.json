@@ -1,0 +1,23 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/build/current",
+    "--background-index",
+    "--header-insertion=never",
+    "--query-driver=/usr/bin/gcc*,/usr/bin/clang*"
+  ],
+  "clangd.inactiveRegions.useBackgroundHighlight": true,
+  "workbench.colorCustomizations": {
+    "clangd.inactiveRegions.background": "#3a2a2a55",
+    "clangd.inactiveRegions.opacity": 0.55
+  },
+  "search.exclude": {
+    "build/**": true
+  },
+  "files.watcherExclude": {
+    "build/**/*.o": true,
+    "build/**/*.o.d": true,
+    "build/**/*.cmd": true,
+    "build/**/*.a": true
+  }
+}

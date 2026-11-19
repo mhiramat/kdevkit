@@ -1,0 +1,73 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "kdev: Configure & Sync (#ifdef)",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/configure.sh",
+      "args": [
+        "${input:userConfig}"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "kdev: Build Kernel & Modules",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/build_kernel.sh",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "kdev: Build BusyBox initramfs",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/build_initramfs.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "kdev: Run QEMU",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/run_qemu.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      }
+    },
+    {
+      "label": "kdev: Build All & Boot QEMU",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "kdev: Build Kernel & Modules",
+        "kdev: Build BusyBox initramfs",
+        "kdev: Run QEMU"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "userConfig",
+      "type": "promptString",
+      "description": "Optional path to user Kconfig fragment (e.g., configs/user.config). Leave empty for defaults.",
+      "default": ""
+    }
+  ]
+}
