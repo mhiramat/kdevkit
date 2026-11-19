@@ -1,0 +1,27 @@
+If:
+  PathMatch: ^linux/.*
+
+CompileFlags:
+  CompilationDatabase: @BUILD_DIR@
+  Add:
+    - -D__KERNEL__
+    - -include
+    - @BUILD_DIR@/include/generated/autoconf.h
+    - -I@KERNEL_DIR@/include
+    - -I@KERNEL_DIR@/arch/x86/include
+    - -I@KERNEL_DIR@/include/uapi
+    - -I@KERNEL_DIR@/arch/x86/include/uapi
+    - -I@BUILD_DIR@/include
+    - -I@BUILD_DIR@/include/generated/uapi
+    - -I@BUILD_DIR@/arch/x86/include/generated
+    - -I@BUILD_DIR@/arch/x86/include/generated/uapi
+  Remove:
+    - -mabi=*
+    - -fconserve-stack
+    - -fno-allow-store-data-races
+    - -mpreferred-stack-boundary=*
+    - -mindirect-branch=*
+    - -mfunction-return=*
+    - -mrecord-mcount
+    - -fmin-function-alignment=*
+    - -mharden-sls=*
