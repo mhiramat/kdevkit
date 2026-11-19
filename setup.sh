@@ -8,6 +8,7 @@ source "${WS_ROOT}/scripts/env.sh"
 CHECK_ONLY=0
 INSTALL_DEPS=0
 RUN_CONFIGURE=0
+SETUP_BACKEND=0
 KERNEL_SRC=""
 USE_WORKTREE=0
 WORKTREE_REF="HEAD"
@@ -30,6 +31,7 @@ Options:
   --branch <BRANCH>         Branch or tag to clone when --kernel-src is a remote URL.
   --depth <N>               Shallow clone depth when cloning from a remote URL.
   --configure               Run scripts/configure.sh after verifying kernel tree & tools.
+  --setup-backend           Create backend/.venv and install the Kconfig Python backend.
   -h, --help                Show this help message.
 
 Examples:
@@ -59,6 +61,10 @@ while [ $# -gt 0 ]; do
       ;;
     --configure)
       RUN_CONFIGURE=1
+      shift
+      ;;
+    --setup-backend)
+      SETUP_BACKEND=1
       shift
       ;;
     --kernel-src)
@@ -104,7 +110,7 @@ if [ "${INSTALL_DEPS}" -eq 1 ]; then
     sudo apt-get update
     sudo apt-get install -y \
       build-essential bc bison flex libelf-dev libssl-dev \
-      python3 cpio gzip clangd busybox-static qemu-system-x86
+      python3 python3-venv python3-pip cpio gzip clangd busybox-static qemu-system-x86
   else
     echo "Error: --install-deps currently supports apt-get (Debian/Ubuntu)." >&2
     echo "Please install the required packages listed in README.md manually." >&2
@@ -186,7 +192,7 @@ else
 fi
 
 echo "==> [2/4] Preparing Workspace Directories & Initial .clangd"
-mkdir -p "${BUILD_DIR}" "${SHARED_DIR}" "${WS_ROOT}/configs" "${WS_ROOT}/scripts" "${WS_ROOT}/.vscode"
+mkdir -p "${BUILD_DIR}" "${SHARED_DIR}" "${WS_ROOT}/configs/user_injected" "${WS_ROOT}/scripts" "${WS_ROOT}/.vscode"
 
 if [ ! -f "${WS_ROOT}/.clangd" ]; then
   sed \
@@ -249,6 +255,11 @@ if [ "${RUN_CONFIGURE}" -eq 1 ]; then
   "${WS_ROOT}/scripts/configure.sh"
 else
   echo "    [INFO] Skipping kernel configuration (pass --configure or run ./scripts/configure.sh when ready)."
+fi
+
+if [ "${SETUP_BACKEND}" -eq 1 ]; then
+  echo "==> Setting up Kconfig Python Backend"
+  "${WS_ROOT}/scripts/setup_kconfig_backend.sh"
 fi
 
 echo "==> Setup complete!"
