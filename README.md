@@ -69,7 +69,62 @@ When prompted, install the recommended workspace extensions (`llvm-vs-code-exten
 
 ---
 
-## 3. Directory Layout
+## 3. Kconfig Editor Backend & VSCode Extension Installation
+
+First, build both the Python Kconfig SAT solver backend (`backend/.venv`) and the VSCode extension frontend (`extension/dist`):
+
+```bash
+./setup.sh --setup-backend --setup-frontend
+```
+
+Then install or launch the VSCode extension (`extension/`) using one of the following methods:
+
+### Method A: Symlink into Your Local Extensions Folder (Recommended for Development)
+
+Requires no `.vsix` packaging; after running `npm run build` in `extension/`, simply reload the window.
+
+```bash
+# For standard VSCode:
+mkdir -p "$HOME/.vscode/extensions"
+ln -sfn "$PWD/extension" "$HOME/.vscode/extensions/kdev.linux-kernel-dev-0.1.0"
+
+# For Antigravity IDE:
+mkdir -p "$HOME/.antigravity/extensions"
+ln -sfn "$PWD/extension" "$HOME/.antigravity/extensions/kdev.linux-kernel-dev-0.1.0"
+```
+
+After creating the symlink, open the Command Palette (`Ctrl+Shift+P`) and run **`Developer: Reload Window`**.
+
+### Method B: Package and Install as a `.vsix` File
+
+```bash
+(
+  cd extension
+  npm run build
+  npx --yes @vscode/vsce package --allow-missing-repository
+)
+code --install-extension "$PWD/extension/linux-kernel-dev-0.1.0.vsix"
+```
+
+Alternatively, in the editor UI: open **Extensions** (`Ctrl+Shift+X`) → click the **`...`** menu at the top-right → select **Install from VSIX...** → choose `extension/linux-kernel-dev-0.1.0.vsix`.
+
+### Method C: Launch in an Extension Development Host Window
+
+To test without installing into `$HOME`:
+
+```bash
+code --extensionDevelopmentPath="$PWD/extension" "$PWD"
+```
+
+### Opening the Kconfig Editor
+
+Once installed, open the Command Palette (`Ctrl+Shift+P`) and run:
+* **`Kernel Dev: Open Kconfig Editor`** (`kdev.openKconfigEditor`)
+* **`Kernel Dev: Restart Kconfig Backend`** (`kdev.restartKconfigBackend`)
+
+---
+
+## 4. Directory Layout
 
 ```text
 .                                   # VSCode Workspace Root
@@ -101,11 +156,11 @@ When prompted, install the recommended workspace extensions (`llvm-vs-code-exten
 
 ---
 
-## 4. Workflows (VSCode Tasks & CLI)
+## 5. Workflows (VSCode Tasks & CLI)
 
 Every workflow can be triggered from the VSCode Command Palette (**`Tasks: Run Task`**) or directly from a terminal.
 
-### 4.1 Configure & Sync `#ifdef` Regions
+### 5.1 Configure & Sync `#ifdef` Regions
 
 Merges `BASE_CONFIG` (`defconfig`) + `configs/qemu.config` + `configs/trace.config` + optional user config fragments, runs `olddefconfig` and `syncconfig` to generate `include/generated/autoconf.h` in `<1s`, and updates `.clangd`:
 
@@ -120,7 +175,7 @@ Merges `BASE_CONFIG` (`defconfig`) + `configs/qemu.config` + `configs/trace.conf
 * **VSCode Task:** `kdev: Configure & Sync (#ifdef)`
 * After running, execute **`clangd: Restart language server`** in VSCode to immediately refresh active/dimmed `#ifdef CONFIG_*` blocks across both built and unbuilt kernel source files.
 
-### 4.2 Build Kernel, Modules & `compile_commands.json`
+### 5.2 Build Kernel, Modules & `compile_commands.json`
 
 Builds `bzImage`, loadable modules, full-DWARF `vmlinux`, and generates `build/current/compile_commands.json`:
 
@@ -130,7 +185,7 @@ Builds `bzImage`, loadable modules, full-DWARF `vmlinux`, and generates `build/c
 
 * **VSCode Task:** `kdev: Build Kernel & Modules` (Default Build Task: `Ctrl+Shift+B`)
 
-### 4.3 Build Minimal Static BusyBox `initramfs`
+### 5.3 Build Minimal Static BusyBox `initramfs`
 
 Packages the static `busybox` binary, compiled kernel modules, and `/init` lifecycle script into `build/current/initramfs.cpio.gz` without root privileges:
 
@@ -140,7 +195,7 @@ Packages the static `busybox` binary, compiled kernel modules, and `/init` lifec
 
 * **VSCode Task:** `kdev: Build BusyBox initramfs`
 
-### 4.4 Boot in QEMU
+### 5.4 Boot in QEMU
 
 Boots `bzImage` and `initramfs.cpio.gz` in QEMU with serial console attached to the terminal and `build/current/shared/` mounted at `/mnt/host` via VirtIO 9p:
 
@@ -156,7 +211,7 @@ Boots `bzImage` and `initramfs.cpio.gz` in QEMU with serial console attached to 
 
 ---
 
-## 5. Environment Customization
+## 6. Environment Customization
 
 All scripts source [`scripts/env.sh`](./scripts/env.sh) and respect environment variable overrides:
 
