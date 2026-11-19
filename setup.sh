@@ -9,6 +9,7 @@ CHECK_ONLY=0
 INSTALL_DEPS=0
 RUN_CONFIGURE=0
 SETUP_BACKEND=0
+SETUP_FRONTEND=0
 KERNEL_SRC=""
 USE_WORKTREE=0
 WORKTREE_REF="HEAD"
@@ -32,6 +33,7 @@ Options:
   --depth <N>               Shallow clone depth when cloning from a remote URL.
   --configure               Run scripts/configure.sh after verifying kernel tree & tools.
   --setup-backend           Create backend/.venv and install the Kconfig Python backend.
+  --setup-frontend          Install npm packages and build the VSCode extension frontend.
   -h, --help                Show this help message.
 
 Examples:
@@ -65,6 +67,10 @@ while [ $# -gt 0 ]; do
       ;;
     --setup-backend)
       SETUP_BACKEND=1
+      shift
+      ;;
+    --setup-frontend)
+      SETUP_FRONTEND=1
       shift
       ;;
     --kernel-src)
@@ -260,6 +266,11 @@ fi
 if [ "${SETUP_BACKEND}" -eq 1 ]; then
   echo "==> Setting up Kconfig Python Backend"
   "${WS_ROOT}/scripts/setup_kconfig_backend.sh"
+fi
+
+if [ "${SETUP_FRONTEND}" -eq 1 ]; then
+  echo "==> Setting up Kconfig VSCode Extension Frontend"
+  "${WS_ROOT}/scripts/setup_kconfig_frontend.sh"
 fi
 
 echo "==> Setup complete!"
