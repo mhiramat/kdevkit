@@ -1,0 +1,272 @@
+:root {
+  --kdev-border: var(--vscode-panel-border, #3c3c3c);
+  --kdev-bg: var(--vscode-editor-background, #1e1e1e);
+  --kdev-fg: var(--vscode-editor-foreground, #cccccc);
+  --kdev-sidebar-bg: var(--vscode-sideBar-background, #252526);
+  --kdev-input-bg: var(--vscode-input-background, #3c3c3c);
+  --kdev-input-fg: var(--vscode-input-foreground, #cccccc);
+  --kdev-input-border: var(--vscode-input-border, #3c3c3c);
+  --kdev-btn-bg: var(--vscode-button-background, #0e639c);
+  --kdev-btn-fg: var(--vscode-button-foreground, #ffffff);
+  --kdev-btn-hover: var(--vscode-button-hoverBackground, #1177bb);
+  --kdev-btn-sec-bg: var(--vscode-button-secondaryBackground, #3a3d41);
+  --kdev-btn-sec-fg: var(--vscode-button-secondaryForeground, #ffffff);
+  --kdev-warn-fg: var(--vscode-editorWarning-foreground, #cca700);
+  --kdev-err-fg: var(--vscode-errorForeground, #f48771);
+  --kdev-hover-bg: var(--vscode-list-hoverBackground, #2a2d2e);
+  --kdev-active-bg: var(--vscode-list-activeSelectionBackground, #094771);
+  --kdev-active-fg: var(--vscode-list-activeSelectionForeground, #ffffff);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+  background-color: var(--kdev-bg);
+  color: var(--kdev-fg);
+  font-family: var(--vscode-font-family, system-ui, -apple-system, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  overflow: hidden;
+}
+
+.kdev-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+}
+
+.kdev-layer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--kdev-sidebar-bg);
+  border-bottom: 1px solid var(--kdev-border);
+}
+
+.kdev-layer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--kdev-border);
+  background-color: var(--kdev-bg);
+  font-size: 12px;
+}
+
+.kdev-layer-chip.pinned {
+  border-color: var(--kdev-warn-fg);
+}
+
+.kdev-layer-chip.disabled {
+  opacity: 0.55;
+}
+
+.kdev-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--kdev-border);
+}
+
+.kdev-search-input {
+  flex: 1;
+  padding: 5px 10px;
+  background-color: var(--kdev-input-bg);
+  color: var(--kdev-input-fg);
+  border: 1px solid var(--kdev-input-border);
+  border-radius: 3px;
+}
+
+.kdev-main-grid {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.kdev-pane-tree {
+  width: 26%;
+  min-width: 200px;
+  border-right: 1px solid var(--kdev-border);
+  background-color: var(--kdev-sidebar-bg);
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.kdev-pane-symbols {
+  width: 44%;
+  border-right: 1px solid var(--kdev-border);
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.kdev-pane-detail {
+  width: 30%;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.kdev-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.kdev-tree-item:hover {
+  background-color: var(--kdev-hover-bg);
+}
+
+.kdev-tree-item.selected {
+  background-color: var(--kdev-active-bg);
+  color: var(--kdev-active-fg);
+}
+
+.kdev-tree-item.invisible {
+  opacity: 0.55;
+}
+
+.kdev-symbol-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border: 1px solid var(--kdev-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.kdev-symbol-row:hover {
+  background-color: var(--kdev-hover-bg);
+}
+
+.kdev-symbol-row.selected {
+  border-color: var(--kdev-btn-bg);
+}
+
+.kdev-symbol-row.invisible {
+  opacity: 0.65;
+  border-style: dashed;
+}
+
+.kdev-tristate-group {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.kdev-tri-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--kdev-border);
+  background-color: var(--kdev-input-bg);
+  color: var(--kdev-input-fg);
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.kdev-tri-btn.active {
+  background-color: var(--kdev-btn-bg);
+  color: var(--kdev-btn-fg);
+  border-color: var(--kdev-btn-bg);
+}
+
+.kdev-btn {
+  padding: 4px 10px;
+  background-color: var(--kdev-btn-bg);
+  color: var(--kdev-btn-fg);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.kdev-btn:hover:not(:disabled) {
+  background-color: var(--kdev-btn-hover);
+}
+
+.kdev-btn.secondary {
+  background-color: var(--kdev-btn-sec-bg);
+  color: var(--kdev-btn-sec-fg);
+}
+
+.kdev-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kdev-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.kdev-modal {
+  width: min(680px, 92vw);
+  max-height: 82vh;
+  background-color: var(--kdev-bg);
+  border: 1px solid var(--kdev-border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.kdev-modal-header {
+  padding: 12px 16px;
+  background-color: var(--kdev-sidebar-bg);
+  border-bottom: 1px solid var(--kdev-border);
+  font-weight: 600;
+}
+
+.kdev-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.kdev-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: var(--kdev-sidebar-bg);
+  border-top: 1px solid var(--kdev-border);
+}
+
+.kdev-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.kdev-table th,
+.kdev-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--kdev-border);
+}
+
+.kdev-conflict-box {
+  padding: 10px 12px;
+  border: 1px solid var(--kdev-err-fg);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
