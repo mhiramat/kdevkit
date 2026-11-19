@@ -1,0 +1,80 @@
+mainmenu "Synthetic Kconfig Test Tree"
+
+config MODULES
+	bool "Enable loadable module support"
+	default n
+
+# 1. Linear Dependency: C -> B -> A
+config LIN_A
+	bool "Linear A"
+	default n
+
+config LIN_B
+	bool "Linear B"
+	depends on LIN_A
+	default n
+
+config LIN_C
+	bool "Linear C"
+	depends on LIN_B
+	default n
+
+# 2. Disjunction Cost Minimization: DISJ_C depends on DISJ_A || (DISJ_B1 && DISJ_B2)
+config DISJ_A
+	bool "Disj A (single)"
+	default n
+
+config DISJ_B1
+	bool "Disj B1"
+	default n
+
+config DISJ_B2
+	bool "Disj B2"
+	default n
+
+config DISJ_C
+	bool "Disj C"
+	depends on DISJ_A || (DISJ_B1 && DISJ_B2)
+	default n
+
+# 3 & 4. Negation & Auto-Disable / Pinned Conflict: NEG_B depends on !NEG_A
+config NEG_A
+	bool "Negation A"
+	default y
+
+config NEG_B
+	bool "Negation B"
+	depends on !NEG_A
+	default n
+
+# 5 & 6. Tristate & MODULES, plus select promotion (TRISTATE_A selects BOOL_SELECTED)
+config BOOL_SELECTED
+	bool "Selected Bool Target"
+	default n
+
+config TRISTATE_A
+	tristate "Tristate Driver A"
+	select BOOL_SELECTED
+	default n
+
+# 7. Exclusive mandatory BOOL choice
+choice
+	prompt "Allocator Choice"
+	default CHOICE_OPT_1
+
+config CHOICE_OPT_1
+	bool "Option 1"
+
+config CHOICE_OPT_2
+	bool "Option 2"
+
+endchoice
+
+# 8. Promptless Guard: INTERNAL has no prompt and is selected only by DRIVER_X
+config INTERNAL_HELPER
+	bool
+
+config DRIVER_X
+	bool "Driver X that selects INTERNAL_HELPER"
+	select INTERNAL_HELPER
+	default n
