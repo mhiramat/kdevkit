@@ -358,6 +358,8 @@ class SymbolChange:
     def to_dict(self) -> dict[str, Any]:
         return {
             "symbol": self.symbol,
+            "from": self.old_value,
+            "to": self.new_value,
             "oldValue": self.old_value,
             "newValue": self.new_value,
             "reason": self.reason,
