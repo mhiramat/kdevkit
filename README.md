@@ -81,19 +81,13 @@ Then install or launch the VSCode extension (`extension/`) using one of the foll
 
 ### Method A: Symlink into Your Local Extensions Folder (Recommended for Development)
 
-Requires no `.vsix` packaging; after running `npm run build` in `extension/`, simply reload the window.
+Run the dedicated installer script to create (or overwrite) the extension symlink in your local VSCode / Antigravity extensions directory. If you ever rename or move this workspace directory, simply re-run this script to update the symlink target:
 
 ```bash
-# For standard VSCode:
-mkdir -p "$HOME/.vscode/extensions"
-ln -sfn "$PWD/extension" "$HOME/.vscode/extensions/kdev.linux-kernel-dev-0.1.0"
-
-# For Antigravity IDE:
-mkdir -p "$HOME/.antigravity/extensions"
-ln -sfn "$PWD/extension" "$HOME/.antigravity/extensions/kdev.linux-kernel-dev-0.1.0"
+./scripts/install_extension.sh
 ```
 
-After creating the symlink, open the Command Palette (`Ctrl+Shift+P`) and run **`Developer: Reload Window`**.
+After running the script, open the Command Palette (`Ctrl+Shift+P`) and run **`Developer: Reload Window`**.
 
 ### Method B: Package and Install as a `.vsix` File
 
@@ -147,7 +141,8 @@ Once installed, open the Command Palette (`Ctrl+Shift+P`) and run:
 │   ├── configure.sh                # merge_config.sh + olddefconfig + syncconfig + .clangd gen
 │   ├── build_kernel.sh             # Out-of-tree bzImage + modules + compile_commands.json
 │   ├── build_initramfs.sh          # Rootless static BusyBox + modules + /init cpio.gz builder
-│   └── run_qemu.sh                 # QEMU launcher with 9p hostshare & KVM auto-detection
+│   ├── run_qemu.sh                 # QEMU launcher with 9p hostshare & KVM auto-detection
+│   └── install_extension.sh        # Symlinks extension/ into local VSCode/Antigravity extensions dir
 ├── build/
 │   └── current/                    # Active out-of-tree build directory (O=)
 │       ├── layers.json             # Per-profile declarative Kconfig layer manifest

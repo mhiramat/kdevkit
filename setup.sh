@@ -271,6 +271,7 @@ fi
 if [ "${SETUP_FRONTEND}" -eq 1 ]; then
   echo "==> Setting up Kconfig VSCode Extension Frontend"
   "${WS_ROOT}/scripts/setup_kconfig_frontend.sh"
+  "${WS_ROOT}/scripts/install_extension.sh"
 fi
 
 echo "==> Setup complete!"
