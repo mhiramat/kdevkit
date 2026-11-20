@@ -16,7 +16,7 @@ function readWorkspaceOverrides(): WorkspaceConfigOverrides {
     kernelSrcDir: cfg.get<string>('kernelSrcDir', 'linux'),
     buildDir: cfg.get<string>('buildDir', 'build/current'),
     arch: cfg.get<string>('arch', 'x86_64'),
-    layersFile: cfg.get<string>('layersFile', 'configs/layers.json'),
+    layersFile: cfg.get<string>('layersFile', ''),
     pythonPath: cfg.get<string>('pythonPath', 'backend/.venv/bin/python'),
     autoRestartClangd: cfg.get<boolean>('autoRestartClangd', true),
   };

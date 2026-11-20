@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ResolvedWorkspacePaths } from '../shared/workspacePaths';
 
@@ -23,8 +24,8 @@ export class KconfigFileWatcher implements vscode.Disposable {
       '.config'
     );
     const layersPattern = new vscode.RelativePattern(
-      options.paths.workspaceRoot,
-      'configs/layers.json'
+      path.dirname(options.paths.layersJsonPath),
+      path.basename(options.paths.layersJsonPath)
     );
 
     for (const pattern of [dotConfigPattern, layersPattern]) {

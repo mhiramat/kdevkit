@@ -150,6 +150,9 @@ Once installed, open the Command Palette (`Ctrl+Shift+P`) and run:
 │   └── run_qemu.sh                 # QEMU launcher with 9p hostshare & KVM auto-detection
 ├── build/
 │   └── current/                    # Active out-of-tree build directory (O=)
+│       ├── layers.json             # Per-profile declarative Kconfig layer manifest
+│       ├── solver_overlay.config   # Auto-generated Kconfig solver diff overlay
+│       ├── user_injected/          # Symlinked user/selftest Kconfig fragments
 │       └── shared/                 # 9p VirtIO shared directory (Host <-> Guest /mnt/host)
 └── linux/                          # Upstream Linux kernel Git repository (untouched)
 ```

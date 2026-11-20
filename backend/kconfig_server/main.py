@@ -94,7 +94,7 @@ class KconfigService:
         layers_json_path = (
             Path(layers_json_raw).resolve()
             if layers_json_raw
-            else (ws_root / "configs" / "layers.json")
+            else (build_dir / "layers.json")
         )
         use_make_probe = bool(params.get("useMakeProbe", True))
         kconfig_filename = str(params.get("kconfigFilename") or "Kconfig")

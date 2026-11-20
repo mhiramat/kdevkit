@@ -46,11 +46,13 @@ kdev-workspace/
 ├── DESIGN.md                           # Phase 1 design (existing)
 ├── DESIGN_KCONFIG_BACKEND.md           # This document
 ├── configs/
-│   ├── layers.json                     # Declarative layer ordering & pin metadata
 │   ├── qemu.config                     # [Pinned] Phase 1 QEMU boot fragment
-│   ├── trace.config                    # [Pinned] Phase 1 DWARF + Kprobes fragment
-│   ├── user_injected/                  # Directory for user-imported .config fragments
-│   └── solver_overlay.config           # Auto-generated diff managed by this backend
+│   └── trace.config                    # [Pinned] Phase 1 DWARF + Kprobes fragment
+├── build/
+│   └── current/
+│       ├── layers.json                 # Declarative layer ordering & pin metadata (per profile)
+│       ├── user_injected/              # Directory for user-imported .config fragments
+│       └── solver_overlay.config       # Auto-generated diff managed by this backend
 ├── scripts/
 │   └── configure.sh                    # Phase 1 script (accepts ordered fragment args)
 ├── backend/

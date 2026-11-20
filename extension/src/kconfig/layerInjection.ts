@@ -77,7 +77,7 @@ function sameRealPath(fileA: string, fileB: string): boolean {
 }
 
 /**
- * Create a symbolic link inside configs/user_injected/ pointing to srcFile,
+ * Create a symbolic link inside userInjectedDir (e.g. build/current/user_injected/) pointing to srcFile,
  * avoiding collisions when multiple "config" files from different directories are injected.
  */
 export function linkInjectedConfigLayer(options: {

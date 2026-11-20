@@ -29,7 +29,7 @@ function createTempSyntheticWorkspace(): string {
   fs.copyFileSync(FIXTURE_KCONFIG, path.join(kernelDir, 'Kconfig'));
   fs.writeFileSync(path.join(configsDir, 'qemu.config'), 'CONFIG_NEG_A=y\n', 'utf8');
   fs.writeFileSync(path.join(configsDir, 'trace.config'), '', 'utf8');
-  fs.writeFileSync(path.join(configsDir, 'solver_overlay.config'), '', 'utf8');
+  fs.writeFileSync(path.join(buildDir, 'solver_overlay.config'), '', 'utf8');
   fs.writeFileSync(
     path.join(buildDir, '.config'),
     'CONFIG_NEG_A=y\nCONFIG_CHOICE_OPT_1=y\n',
@@ -72,7 +72,7 @@ describe('Layer 2: Real Node KconfigRpcClient <-> Real Python kconfig_server Int
         workspaceRoot: tmpWs,
         kernelDir: path.join(tmpWs, 'linux'),
         buildDir: path.join(tmpWs, 'build', 'current'),
-        layersJsonPath: path.join(tmpWs, 'configs', 'layers.json'),
+        layersJsonPath: path.join(tmpWs, 'build', 'current', 'layers.json'),
         useMakeProbe: false,
       });
       expect(initRes.symbolCount).toBeGreaterThanOrEqual(10);
@@ -123,7 +123,7 @@ describe('Layer 2: Real Node KconfigRpcClient <-> Real Python kconfig_server Int
       expect(applyRes.mismatches).toEqual([]);
 
       const overlayText = fs.readFileSync(
-        path.join(tmpWs, 'configs', 'solver_overlay.config'),
+        path.join(tmpWs, 'build', 'current', 'solver_overlay.config'),
         'utf8'
       );
       expect(overlayText).toContain('CONFIG_LIN_C=y');

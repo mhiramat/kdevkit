@@ -19,7 +19,7 @@ describe('Layer Injection & Selftest Config Symlinking (layerInjection.ts)', () 
     tempDirs.push(wsRoot);
 
     const kernelDir = path.join(wsRoot, 'linux');
-    const userInjectedDir = path.join(wsRoot, 'configs', 'user_injected');
+    const userInjectedDir = path.join(wsRoot, 'build', 'current', 'user_injected');
     const ftraceDir = path.join(kernelDir, 'tools', 'testing', 'selftests', 'ftrace');
     const bpfDir = path.join(kernelDir, 'tools', 'testing', 'selftests', 'bpf');
     const netFwdDir = path.join(kernelDir, 'tools', 'testing', 'selftests', 'net', 'forwarding');
@@ -39,7 +39,7 @@ describe('Layer Injection & Selftest Config Symlinking (layerInjection.ts)', () 
     let layers: ConfigLayer[] = [
       { id: 'qemu', path: 'configs/qemu.config', enabled: true, pinned: true },
       { id: 'trace', path: 'configs/trace.config', enabled: true, pinned: true },
-      { id: 'solver', path: 'configs/solver_overlay.config', enabled: true, pinned: false, readonly: true },
+      { id: 'solver', path: 'build/current/solver_overlay.config', enabled: true, pinned: false, readonly: true },
     ];
 
     // 1. Inject selftests/ftrace/config
@@ -52,7 +52,7 @@ describe('Layer Injection & Selftest Config Symlinking (layerInjection.ts)', () 
     });
     layers = res1.updatedLayers;
     expect(res1.newLayer.id).toBe('selftests_ftrace');
-    expect(res1.newLayer.path).toBe('configs/user_injected/selftests_ftrace.config');
+    expect(res1.newLayer.path).toBe('build/current/user_injected/selftests_ftrace.config');
     expect(fs.lstatSync(res1.destPath).isSymbolicLink()).toBe(true);
 
     // 2. Inject selftests/bpf/config
@@ -65,7 +65,7 @@ describe('Layer Injection & Selftest Config Symlinking (layerInjection.ts)', () 
     });
     layers = res2.updatedLayers;
     expect(res2.newLayer.id).toBe('selftests_bpf');
-    expect(res2.newLayer.path).toBe('configs/user_injected/selftests_bpf.config');
+    expect(res2.newLayer.path).toBe('build/current/user_injected/selftests_bpf.config');
     expect(fs.lstatSync(res2.destPath).isSymbolicLink()).toBe(true);
 
     // 3. Inject nested selftests/net/forwarding/config
@@ -78,7 +78,7 @@ describe('Layer Injection & Selftest Config Symlinking (layerInjection.ts)', () 
     });
     layers = res3.updatedLayers;
     expect(res3.newLayer.id).toBe('selftests_net_forwarding');
-    expect(res3.newLayer.path).toBe('configs/user_injected/selftests_net_forwarding.config');
+    expect(res3.newLayer.path).toBe('build/current/user_injected/selftests_net_forwarding.config');
     expect(fs.lstatSync(res3.destPath).isSymbolicLink()).toBe(true);
 
     // Verify all 3 layers coexist before 'solver'
@@ -100,7 +100,7 @@ describe('Layer Injection & Selftest Config Symlinking (layerInjection.ts)', () 
     const wsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kdev-layer-col-'));
     tempDirs.push(wsRoot);
 
-    const userInjectedDir = path.join(wsRoot, 'configs', 'user_injected');
+    const userInjectedDir = path.join(wsRoot, 'build', 'current', 'user_injected');
     const dirA = path.join(wsRoot, 'extA', 'sub');
     const dirB = path.join(wsRoot, 'extB', 'sub');
     fs.mkdirSync(dirA, { recursive: true });

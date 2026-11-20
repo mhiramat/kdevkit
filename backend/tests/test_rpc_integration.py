@@ -29,7 +29,7 @@ def test_rpc_service_lifecycle_synthetic(tmp_path: Path) -> None:
     shutil.copyfile(FIXTURE_KCONFIG, kernel_dir / "Kconfig")
     (configs_dir / "qemu.config").write_text("CONFIG_NEG_A=y\n", encoding="utf-8")
     (configs_dir / "trace.config").write_text("", encoding="utf-8")
-    (configs_dir / "solver_overlay.config").write_text("", encoding="utf-8")
+    (build_dir / "solver_overlay.config").write_text("", encoding="utf-8")
     (build_dir / ".config").write_text("CONFIG_NEG_A=y\nCONFIG_CHOICE_OPT_1=y\n", encoding="utf-8")
 
     svc = KconfigService()

@@ -38,8 +38,10 @@ export function resolveWorkspacePaths(
   const kernelDir = resolveMaybeRelative(wsRoot, overrides.kernelSrcDir || 'linux');
   const buildDir = resolveMaybeRelative(wsRoot, overrides.buildDir || 'build/current');
   const arch = overrides.arch || 'x86_64';
-  const layersJsonPath = resolveMaybeRelative(wsRoot, overrides.layersFile || 'configs/layers.json');
-  const userInjectedDir = path.resolve(wsRoot, 'configs', 'user_injected');
+  const layersJsonPath = overrides.layersFile
+    ? resolveMaybeRelative(wsRoot, overrides.layersFile)
+    : path.join(buildDir, 'layers.json');
+  const userInjectedDir = path.join(buildDir, 'user_injected');
 
   const configuredPython = overrides.pythonPath || 'backend/.venv/bin/python';
   const candidatePython = resolveMaybeRelative(wsRoot, configuredPython);

@@ -34,8 +34,8 @@
         },
         "kdev.layersFile": {
           "type": "string",
-          "default": "configs/layers.json",
-          "description": "Path to the declarative Kconfig layers JSON manifest."
+          "default": "",
+          "description": "Optional path to the declarative Kconfig layers JSON manifest (defaults to <buildDir>/layers.json when empty)."
         },
         "kdev.pythonPath": {
           "type": "string",

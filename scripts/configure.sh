@@ -28,12 +28,14 @@ for arg in "$@"; do
     fi
     if [[ "${CFG_PATH}" == */configs/qemu.config ]] || \
        [[ "${CFG_PATH}" == */configs/trace.config ]] || \
-       [[ "${CFG_PATH}" == */configs/solver_overlay.config ]]; then
+       [[ "${CFG_PATH}" == */solver_overlay.config ]]; then
       EXPLICIT_LAYER_LIST=1
     fi
     PASSED_CONFIGS+=("${CFG_PATH}")
   fi
 done
+
+LAYERS_JSON_FILE="${LAYERS_JSON:-${BUILD_DIR}/layers.json}"
 
 if [ "${EXPLICIT_LAYER_LIST}" -eq 1 ]; then
   MERGE_FRAGMENTS=("${PASSED_CONFIGS[@]}")
@@ -43,13 +45,13 @@ elif [ ${#PASSED_CONFIGS[@]} -gt 0 ]; then
     "${WS_ROOT}/configs/trace.config"
     "${PASSED_CONFIGS[@]}"
   )
-elif [ -f "${WS_ROOT}/configs/layers.json" ] && command -v python3 >/dev/null 2>&1; then
+elif [ -f "${LAYERS_JSON_FILE}" ] && command -v python3 >/dev/null 2>&1; then
   if [ -z "${BASE_CONFIG_OVERRIDDEN:-}" ]; then
     LAYERS_BASE="$(python3 -c '
 import json, sys
 data = json.load(open(sys.argv[1], encoding="utf-8"))
 print(data.get("base_target") or data.get("baseTarget") or "defconfig")
-' "${WS_ROOT}/configs/layers.json" 2>/dev/null || echo "${BASE_CONFIG}")"
+' "${LAYERS_JSON_FILE}" 2>/dev/null || echo "${BASE_CONFIG}")"
     BASE_CONFIG="${LAYERS_BASE}"
   fi
   mapfile -t MERGE_FRAGMENTS < <(python3 -c '
@@ -62,7 +64,7 @@ for layer in data.get("layers", []):
         full = p if os.path.isabs(p) else os.path.join(ws, p)
         if os.path.isfile(full):
             print(full)
-' "${WS_ROOT}" "${WS_ROOT}/configs/layers.json")
+' "${WS_ROOT}" "${LAYERS_JSON_FILE}")
   if [ -f "${WS_ROOT}/configs/user.config" ]; then
     MERGE_FRAGMENTS+=("${WS_ROOT}/configs/user.config")
   fi
@@ -74,8 +76,8 @@ else
   if [ -f "${WS_ROOT}/configs/user.config" ]; then
     MERGE_FRAGMENTS+=("${WS_ROOT}/configs/user.config")
   fi
-  if [ -f "${WS_ROOT}/configs/solver_overlay.config" ]; then
-    MERGE_FRAGMENTS+=("${WS_ROOT}/configs/solver_overlay.config")
+  if [ -f "${BUILD_DIR}/solver_overlay.config" ]; then
+    MERGE_FRAGMENTS+=("${BUILD_DIR}/solver_overlay.config")
   fi
 fi
 

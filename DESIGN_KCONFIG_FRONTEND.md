@@ -106,7 +106,7 @@ Expose workspace-configurable paths under the `kdev.*` namespace so Phase 1, Pha
         "kdev.kernelSrcDir": { "type": "string", "default": "linux" },
         "kdev.buildDir": { "type": "string", "default": "build/current" },
         "kdev.arch": { "type": "string", "default": "x86_64" },
-        "kdev.layersFile": { "type": "string", "default": "configs/layers.json" },
+        "kdev.layersFile": { "type": "string", "default": "" },
         "kdev.pythonPath": { "type": "string", "default": "backend/.venv/bin/python" },
         "kdev.autoRestartClangd": { "type": "boolean", "default": true }
       }

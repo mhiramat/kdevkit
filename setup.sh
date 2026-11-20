@@ -198,7 +198,7 @@ else
 fi
 
 echo "==> [2/4] Preparing Workspace Directories & Initial .clangd"
-mkdir -p "${BUILD_DIR}" "${SHARED_DIR}" "${WS_ROOT}/configs/user_injected" "${WS_ROOT}/scripts" "${WS_ROOT}/.vscode"
+mkdir -p "${BUILD_DIR}" "${SHARED_DIR}" "${BUILD_DIR}/user_injected" "${WS_ROOT}/scripts" "${WS_ROOT}/.vscode"
 
 if [ ! -f "${WS_ROOT}/.clangd" ]; then
   sed \

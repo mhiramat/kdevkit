@@ -377,7 +377,7 @@ export class KconfigPanelController implements vscode.Disposable {
   }
 
   private async resetSolverOverlay(): Promise<ApplyResponse> {
-    const overlayFile = path.join(this.paths.workspaceRoot, 'configs', 'solver_overlay.config');
+    const overlayFile = path.join(this.paths.buildDir, 'solver_overlay.config');
     fs.mkdirSync(path.dirname(overlayFile), { recursive: true });
     fs.writeFileSync(
       overlayFile,

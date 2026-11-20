@@ -22,7 +22,7 @@ def test_parse_and_write_overlay_and_verify(tmp_path: Path) -> None:
         "CONFIG_KPROBES=y\n",
         encoding="utf-8",
     )
-    (configs_dir / "solver_overlay.config").write_text(
+    (build_dir / "solver_overlay.config").write_text(
         "# Auto-generated\n",
         encoding="utf-8",
     )

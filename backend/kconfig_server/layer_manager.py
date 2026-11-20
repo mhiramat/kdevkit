@@ -89,7 +89,7 @@ def format_config_line(symbol: str, value: str) -> str:
 
 
 class LayerManager:
-    """Manages configs/layers.json, solver_overlay.config, and scripts/configure.sh invocation."""
+    """Manages build/<profile>/layers.json, solver_overlay.config, and scripts/configure.sh invocation."""
 
     def __init__(
         self,
@@ -100,15 +100,15 @@ class LayerManager:
         arch: str = "x86_64",
     ) -> None:
         self.workspace_root = workspace_root.resolve()
-        self.layers_json_path = (
-            layers_json_path.resolve()
-            if layers_json_path is not None
-            else (self.workspace_root / "configs" / "layers.json")
-        )
         self.build_dir = (
             build_dir.resolve()
             if build_dir is not None
             else (self.workspace_root / "build" / "current")
+        )
+        self.layers_json_path = (
+            layers_json_path.resolve()
+            if layers_json_path is not None
+            else (self.build_dir / "layers.json")
         )
         self.kernel_dir = (
             kernel_dir.resolve()
@@ -132,6 +132,13 @@ class LayerManager:
             p = self.workspace_root / p
         return p.resolve()
 
+    def _default_solver_overlay_layer_path(self) -> str:
+        default_overlay = (self.build_dir / "solver_overlay.config").resolve()
+        try:
+            return default_overlay.relative_to(self.workspace_root).as_posix()
+        except ValueError:
+            return str(default_overlay)
+
     def load_layers_json(self) -> None:
         if not self.layers_json_path.is_file():
             self.version = 1
@@ -153,7 +160,7 @@ class LayerManager:
                 ),
                 LayerEntry(
                     id="solver",
-                    path="configs/solver_overlay.config",
+                    path=self._default_solver_overlay_layer_path(),
                     enabled=True,
                     pinned=False,
                     readonly=True,
@@ -275,14 +282,14 @@ class LayerManager:
         for layer in self.layers:
             if layer.id == "solver":
                 return self.resolve_layer_path(layer.path)
-        return (self.workspace_root / "configs" / "solver_overlay.config").resolve()
+        return (self.build_dir / "solver_overlay.config").resolve()
 
     def write_solver_overlay(
         self,
         changes: list[tuple[str, str]] | dict[str, str],
         reset: bool = False,
     ) -> Path:
-        """Merge newly resolved symbol changes into configs/solver_overlay.config."""
+        """Merge newly resolved symbol changes into solver_overlay.config."""
         overlay_path = self.get_solver_overlay_path()
         overlay_path.parent.mkdir(parents=True, exist_ok=True)
 
