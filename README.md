@@ -226,3 +226,10 @@ All scripts source [`scripts/env.sh`](./scripts/env.sh) and respect environment 
 | `QEMU_MEM` | `2G` | Guest RAM allocation. |
 | `QEMU_SMP` | `2` | Guest vCPU count. |
 | `LLVM` / `MAKE_ARGS` | *(unset)* | Optional flags forwarded to `make` (e.g. `LLVM=1`). |
+
+---
+
+## 7. License
+
+This project is licensed under the **Apache License 2.0** — see the [LICENSE](./LICENSE) file for details.
+

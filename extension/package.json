@@ -3,6 +3,7 @@
   "displayName": "Linux Kernel Dev Suite",
   "description": "VSCode Linux Kernel Development Suite (Kconfig SAT Solver, Kprobes & Selftests)",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "publisher": "kdev",
   "engines": {
     "vscode": "^1.90.0"
