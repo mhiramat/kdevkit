@@ -37,20 +37,45 @@ done
 
 if [ "${EXPLICIT_LAYER_LIST}" -eq 1 ]; then
   MERGE_FRAGMENTS=("${PASSED_CONFIGS[@]}")
+elif [ ${#PASSED_CONFIGS[@]} -gt 0 ]; then
+  MERGE_FRAGMENTS=(
+    "${WS_ROOT}/configs/qemu.config"
+    "${WS_ROOT}/configs/trace.config"
+    "${PASSED_CONFIGS[@]}"
+  )
+elif [ -f "${WS_ROOT}/configs/layers.json" ] && command -v python3 >/dev/null 2>&1; then
+  if [ -z "${BASE_CONFIG_OVERRIDDEN:-}" ]; then
+    LAYERS_BASE="$(python3 -c '
+import json, sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+print(data.get("base_target") or data.get("baseTarget") or "defconfig")
+' "${WS_ROOT}/configs/layers.json" 2>/dev/null || echo "${BASE_CONFIG}")"
+    BASE_CONFIG="${LAYERS_BASE}"
+  fi
+  mapfile -t MERGE_FRAGMENTS < <(python3 -c '
+import json, os, sys
+ws = sys.argv[1]
+data = json.load(open(sys.argv[2], encoding="utf-8"))
+for layer in data.get("layers", []):
+    if layer.get("enabled", True):
+        p = layer["path"]
+        full = p if os.path.isabs(p) else os.path.join(ws, p)
+        if os.path.isfile(full):
+            print(full)
+' "${WS_ROOT}" "${WS_ROOT}/configs/layers.json")
+  if [ -f "${WS_ROOT}/configs/user.config" ]; then
+    MERGE_FRAGMENTS+=("${WS_ROOT}/configs/user.config")
+  fi
 else
   MERGE_FRAGMENTS=(
     "${WS_ROOT}/configs/qemu.config"
     "${WS_ROOT}/configs/trace.config"
   )
-  if [ ${#PASSED_CONFIGS[@]} -gt 0 ]; then
-    MERGE_FRAGMENTS+=("${PASSED_CONFIGS[@]}")
-  else
-    if [ -f "${WS_ROOT}/configs/user.config" ]; then
-      MERGE_FRAGMENTS+=("${WS_ROOT}/configs/user.config")
-    fi
-    if [ -f "${WS_ROOT}/configs/solver_overlay.config" ]; then
-      MERGE_FRAGMENTS+=("${WS_ROOT}/configs/solver_overlay.config")
-    fi
+  if [ -f "${WS_ROOT}/configs/user.config" ]; then
+    MERGE_FRAGMENTS+=("${WS_ROOT}/configs/user.config")
+  fi
+  if [ -f "${WS_ROOT}/configs/solver_overlay.config" ]; then
+    MERGE_FRAGMENTS+=("${WS_ROOT}/configs/solver_overlay.config")
   fi
 fi
 

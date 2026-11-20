@@ -357,17 +357,23 @@ export class KconfigPanelController implements vscode.Disposable {
       linkIntoWorkspace: copyIntoWorkspace,
     });
 
-    const updated = await this.rpcClient.setLayers({
-      baseTarget,
-      layers: updatedLayers,
-      runConfigure: false,
-    });
+    this.applyingCount += 1;
+    try {
+      const updated = await this.rpcClient.setLayers({
+        baseTarget,
+        layers: updatedLayers,
+        runConfigure: true,
+      });
+      await this.maybeRestartClangd();
 
-    return {
-      canceled: false,
-      baseTarget: updated.baseTarget || updated.base_target || baseTarget,
-      layers: updated.layers,
-    };
+      return {
+        canceled: false,
+        baseTarget: updated.baseTarget || updated.base_target || baseTarget,
+        layers: updated.layers,
+      };
+    } finally {
+      this.applyingCount = Math.max(0, this.applyingCount - 1);
+    }
   }
 
   private async resetSolverOverlay(): Promise<ApplyResponse> {

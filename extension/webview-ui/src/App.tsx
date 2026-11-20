@@ -267,7 +267,7 @@ export const App: React.FC = () => {
   );
 
   const handleUpdateLayers = useCallback(
-    (baseTarget: string, layers: ConfigLayer[], applyNow = false) => {
+    (baseTarget: string, layers: ConfigLayer[], applyNow = true) => {
       sendRequest(
         (reqId) => ({
           type: 'updateLayers',
@@ -282,10 +282,11 @@ export const App: React.FC = () => {
             baseTarget: res.baseTarget || res.base_target || baseTarget,
             layers: res.layers,
           });
+          refreshTreeAndLayers(state.expandedMenuIds);
         }
       );
     },
-    [sendRequest]
+    [refreshTreeAndLayers, sendRequest, state.expandedMenuIds]
   );
 
   const handleInjectLayer = useCallback(() => {
@@ -302,10 +303,11 @@ export const App: React.FC = () => {
             baseTarget: res.baseTarget ?? state.baseTarget,
             layers: res.layers,
           });
+          refreshTreeAndLayers(state.expandedMenuIds);
         }
       }
     );
-  }, [sendRequest, state.baseTarget]);
+  }, [refreshTreeAndLayers, sendRequest, state.baseTarget, state.expandedMenuIds]);
 
   const handleResetSolverOverlay = useCallback(() => {
     sendRequest(
