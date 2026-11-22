@@ -49,11 +49,11 @@ Instead of opening the Linux kernel repository directly in VSCode, the kernel tr
 ```text
 kdev-workspace/                     # VSCode Workspace Root
 ├── DESIGN.md                       # This document
-├── .gitignore                      # Ignores linux/, build/, and generated .clangd
+├── .gitignore                      # Ignores linux/, build/, generated .clangd, and .vscode/settings.json
 ├── .clangd                         # Generated from scripts/clangd.template (scoped to linux/)
 ├── .vscode/
 │   ├── extensions.json             # Recommended workspace extensions
-│   ├── settings.json               # clangd config, inactive region styling, search/watcher tuning
+│   ├── settings.json               # Generated from scripts/settings.json.template (gitignored, user-customizable)
 │   └── tasks.json                  # Thin wrappers invoking scripts/*.sh
 ├── configs/                        # Layered Kconfig fragments
 │   ├── qemu.config                 # Mandatory VirtIO, 9pfs, serial console, initrd, modules
@@ -62,6 +62,7 @@ kdev-workspace/                     # VSCode Workspace Root
 ├── scripts/                        # Standalone, CLI-runnable automation scripts
 │   ├── env.sh                      # Shared path & default environment variables
 │   ├── clangd.template             # Template for generating workspace-root .clangd
+│   ├── settings.json.template      # Template for generating .vscode/settings.json
 │   ├── configure.sh                # Layered merge_config.sh + olddefconfig + syncconfig + .clangd gen
 │   ├── build_kernel.sh             # Out-of-tree bzImage + modules + compile_commands.json
 │   ├── build_initramfs.sh          # Rootless static BusyBox + modules + /init cpio.gz builder

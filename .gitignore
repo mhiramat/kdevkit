@@ -9,6 +9,9 @@
 /.clangd
 /.cache/
 
+# Local VSCode workspace settings (materialized by setup.sh from scripts/settings.json.template)
+/.vscode/settings.json
+
 # Local user config fragment
 /configs/user.config
 

@@ -197,7 +197,7 @@ else
   echo "    [OK] All required build, initramfs, and QEMU tools are available."
 fi
 
-echo "==> [2/4] Preparing Workspace Directories & Initial .clangd"
+echo "==> [2/4] Preparing Workspace Directories & Initial Configs"
 mkdir -p "${BUILD_DIR}" "${SHARED_DIR}" "${BUILD_DIR}/user_injected" "${WS_ROOT}/scripts" "${WS_ROOT}/.vscode"
 
 if [ ! -f "${WS_ROOT}/.clangd" ]; then
@@ -209,6 +209,13 @@ if [ ! -f "${WS_ROOT}/.clangd" ]; then
   echo "    [OK] Materialized initial ${WS_ROOT}/.clangd"
 else
   echo "    [OK] ${WS_ROOT}/.clangd already exists"
+fi
+
+if [ ! -f "${WS_ROOT}/.vscode/settings.json" ]; then
+  cp "${WS_ROOT}/scripts/settings.json.template" "${WS_ROOT}/.vscode/settings.json"
+  echo "    [OK] Materialized initial ${WS_ROOT}/.vscode/settings.json"
+else
+  echo "    [OK] ${WS_ROOT}/.vscode/settings.json already exists"
 fi
 
 if [ "${CHECK_ONLY}" -eq 1 ]; then

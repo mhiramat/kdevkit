@@ -125,11 +125,11 @@ Once installed, open the Command Palette (`Ctrl+Shift+P`) and run:
 ├── DESIGN.md                       # Phase 1 Architecture & Design Specification
 ├── README.md                       # Setup & usage guide
 ├── setup.sh                        # Prerequisite checker & workspace bootstrap script
-├── .gitignore                      # Ignores linux/, build/, generated .clangd, user.config
+├── .gitignore                      # Ignores linux/, build/, generated .clangd, .vscode/settings.json, user.config
 ├── .clangd                         # Generated from scripts/clangd.template (scoped to linux/)
 ├── .vscode/
 │   ├── extensions.json             # Recommended workspace extensions
-│   ├── settings.json               # clangd config, inactive #ifdef styling, watcher tuning
+│   ├── settings.json               # Generated from scripts/settings.json.template (gitignored, user-customizable)
 │   └── tasks.json                  # One-click VSCode tasks wrapping scripts/*.sh
 ├── configs/                        # Layered Kconfig fragments
 │   ├── qemu.config                 # VirtIO, 9pfs, serial console, initrd, modules
@@ -138,6 +138,7 @@ Once installed, open the Command Palette (`Ctrl+Shift+P`) and run:
 ├── scripts/                        # Standalone, CLI-runnable automation scripts
 │   ├── env.sh                      # Shared path & default environment variables
 │   ├── clangd.template             # Template for generating workspace-root .clangd
+│   ├── settings.json.template      # Template for generating .vscode/settings.json
 │   ├── configure.sh                # merge_config.sh + olddefconfig + syncconfig + .clangd gen
 │   ├── build_kernel.sh             # Out-of-tree bzImage + modules + compile_commands.json
 │   ├── build_initramfs.sh          # Rootless static BusyBox + modules + /init cpio.gz builder
