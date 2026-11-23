@@ -12,6 +12,9 @@
   "activationEvents": [
     "onCommand:kdev.openKconfigEditor",
     "onCommand:kdev.restartKconfigBackend",
+    "onCommand:kdev.selftest.selectTargets",
+    "onCommand:kdev.selftest.syncTargetConfig",
+    "onCommand:kdev.selftest.buildSelected",
     "onView:kdev.overview",
     "onView:kdev.kprobe.probesView",
     "onView:kdev.kprobe.eventsView",
@@ -72,6 +75,59 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically reload trace.log when updated by QEMU."
+        },
+        "kdev.selftest.targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Whitelist of tools/testing/selftests/ targets shown in Test Explorer."
+        },
+        "kdev.selftest.linkMode": {
+          "type": "string",
+          "enum": [
+            "auto-libs",
+            "static"
+          ],
+          "default": "auto-libs",
+          "description": "Default C test binary strategy: auto-libs (Option A) or static (Option B)."
+        },
+        "kdev.selftest.targetOptions": {
+          "type": "object",
+          "default": {},
+          "description": "Per-target selftest overrides (e.g. linkMode, timeoutSec, bootTimeoutSec)."
+        },
+        "kdev.selftest.checkConfigBeforeRun": {
+          "type": "string",
+          "enum": [
+            "prompt",
+            "off"
+          ],
+          "default": "prompt",
+          "description": "Warn and offer Kconfig solver sync if target config requirements are missing from .config."
+        },
+        "kdev.selftest.timeoutSec": {
+          "type": "number",
+          "default": 300,
+          "minimum": 10,
+          "description": "Overall QEMU selftest execution timeout in seconds."
+        },
+        "kdev.selftest.bootTimeoutSec": {
+          "type": "number",
+          "default": 60,
+          "minimum": 5,
+          "description": "Maximum wait time for guest kernel boot to reach run_target.sh."
+        },
+        "kdev.selftest.autoBuildBeforeRun": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically run scripts/build_selftest.sh before booting QEMU."
+        },
+        "kdev.selftest.keepRunScript": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep build/current/shared/run_target.sh after QEMU exits for debugging."
         }
       }
     },
@@ -164,6 +220,21 @@
       {
         "command": "kdev.kprobe.jumpToEvent",
         "title": "kdev: Jump to Probe/Event Line"
+      },
+      {
+        "command": "kdev.selftest.selectTargets",
+        "title": "kdev: Select Selftest Targets...",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "kdev.selftest.syncTargetConfig",
+        "title": "kdev: Inject & Solve Selftest Kconfig",
+        "icon": "$(wrench)"
+      },
+      {
+        "command": "kdev.selftest.buildSelected",
+        "title": "kdev: Build Selected Selftests",
+        "icon": "$(tools)"
       }
     ],
     "menus": {

@@ -3,12 +3,16 @@ import { KconfigFileWatcher } from './kconfig/configWatcher';
 import { KconfigPanelController } from './kconfig/panelController';
 import { KconfigRpcClient } from './kconfig/rpcClient';
 import { KprobeController } from './kprobe/kprobeController';
+import { QemuRunner } from './qemu/qemuRunner';
+import { SelftestController } from './selftest/selftestController';
 import { resolveWorkspacePaths, WorkspaceConfigOverrides } from './shared/workspacePaths';
 
 export interface KdevExtensionApi {
   rpcClient: KconfigRpcClient;
   panelController: KconfigPanelController;
   kprobeController: KprobeController;
+  selftestController: SelftestController;
+  qemuRunner: QemuRunner;
   getLogs: () => string[];
 }
 
@@ -104,12 +108,25 @@ export function activate(context: vscode.ExtensionContext): KdevExtensionApi | u
     paths,
     logger,
   });
+
+  const qemuRunner = new QemuRunner();
+  const selftestController = new SelftestController({
+    paths,
+    rpcClient,
+    panelController,
+    kprobeController,
+    qemuRunner,
+    logger,
+  });
+
   context.subscriptions.push(
     kprobeController,
+    selftestController,
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('kdev')) {
         const updatedPaths = resolveWorkspacePaths(workspaceRoot, readWorkspaceOverrides());
         kprobeController.updatePaths(updatedPaths);
+        selftestController.updatePaths(updatedPaths);
       }
     })
   );
@@ -118,6 +135,8 @@ export function activate(context: vscode.ExtensionContext): KdevExtensionApi | u
     rpcClient,
     panelController,
     kprobeController,
+    selftestController,
+    qemuRunner,
     getLogs: () => [...logHistory],
   };
 }

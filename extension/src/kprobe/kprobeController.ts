@@ -131,6 +131,14 @@ export class KprobeController implements vscode.Disposable {
     this.refreshAllDecorations();
   }
 
+  public ensureSetupScriptExported(): void {
+    this.persistAndWriteScript();
+  }
+
+  public reloadTraceLogSilent(): void {
+    this.loadTraceLogInternal(true);
+  }
+
   private getPerfOptions(): PerfProbeOptions {
     return {
       perfBin: this.paths.perfBin,
