@@ -66,6 +66,45 @@ cp "${BUSYBOX_BIN}" "${ROOTFS_DIR}/bin/busybox"
 chmod +x "${ROOTFS_DIR}/bin/busybox"
 ln -sf busybox "${ROOTFS_DIR}/bin/sh"
 
+# GNU-compatible wrapper for /usr/bin/timeout (kselftest runner.sh passes --foreground)
+cat << 'EOF' > "${ROOTFS_DIR}/usr/bin/timeout"
+#!/bin/sh
+OPTS=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --foreground|--preserve-status)
+      shift
+      ;;
+    -s|-k)
+      OPTS="$OPTS $1 $2"
+      shift 2
+      ;;
+    --signal=*)
+      OPTS="$OPTS -s ${1#*=}"
+      shift
+      ;;
+    --kill-after=*)
+      OPTS="$OPTS -k ${1#*=}"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+DUR="${1:-0}"
+shift || true
+if [ "$DUR" = "0" ] || [ "$DUR" = "0s" ]; then
+  exec "$@"
+fi
+exec /bin/busybox timeout $OPTS "$DUR" "$@"
+EOF
+chmod +x "${ROOTFS_DIR}/usr/bin/timeout"
+
 if [ -f "${BUILD_DIR}/modules.order" ]; then
   make -C "${KERNEL_DIR}" O="${BUILD_DIR}" ARCH="${ARCH}" \
     INSTALL_MOD_PATH="${ROOTFS_DIR}" modules_install
@@ -80,6 +119,11 @@ cat << 'EOF' > "${ROOTFS_DIR}/init"
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+
+ln -sf /proc/self/fd /dev/fd
+ln -sf /proc/self/fd/0 /dev/stdin
+ln -sf /proc/self/fd/1 /dev/stdout
+ln -sf /proc/self/fd/2 /dev/stderr
 
 mkdir -p /sys/kernel/tracing
 mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true
