@@ -15,6 +15,7 @@
     "onCommand:kdev.selftest.selectTargets",
     "onCommand:kdev.selftest.syncTargetConfig",
     "onCommand:kdev.selftest.buildSelected",
+    "onCommand:kdev.kprobe.openTracePlot",
     "onView:kdev.overview",
     "onView:kdev.kprobe.probesView",
     "onView:kdev.kprobe.eventsView",
@@ -128,6 +129,20 @@
           "type": "boolean",
           "default": false,
           "description": "Keep build/current/shared/run_target.sh after QEMU exits for debugging."
+        },
+        "kdev.tracePlot.defaultTimebase": {
+          "type": "string",
+          "enum": [
+            "relative",
+            "absolute"
+          ],
+          "default": "relative",
+          "description": "Default X-axis timebase in Trace Plotter (relative t-t0 or raw kernel monotonic timestamp)."
+        },
+        "kdev.tracePlot.autoOpenOnSelftestTrace": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open the Trace Plotter panel after a 'Run in QEMU with Active Kprobes' selftest finishes."
         }
       }
     },
@@ -222,6 +237,11 @@
         "title": "kdev: Jump to Probe/Event Line"
       },
       {
+        "command": "kdev.kprobe.openTracePlot",
+        "title": "kdev: Open Trace Plotter",
+        "icon": "$(graph)"
+      },
+      {
         "command": "kdev.selftest.selectTargets",
         "title": "kdev: Select Selftest Targets...",
         "icon": "$(checklist)"
@@ -277,9 +297,14 @@
           "group": "navigation@1"
         },
         {
-          "command": "kdev.kprobe.filterEvents",
+          "command": "kdev.kprobe.openTracePlot",
           "when": "view == kdev.kprobe.eventsView",
           "group": "navigation@2"
+        },
+        {
+          "command": "kdev.kprobe.filterEvents",
+          "when": "view == kdev.kprobe.eventsView",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [

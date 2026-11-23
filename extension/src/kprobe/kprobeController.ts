@@ -1164,7 +1164,10 @@ export class KprobeController implements vscode.Disposable {
     }
 
     const doc = await vscode.workspace.openTextDocument(absPath);
-    const editor = await vscode.window.showTextDocument(doc, { preview: false });
+    const editor = await vscode.window.showTextDocument(doc, {
+      preview: false,
+      viewColumn: args.viewColumn,
+    });
     const zeroLine = Math.max(0, Math.min(line - 1, doc.lineCount - 1));
     const pos = new vscode.Position(zeroLine, 0);
     editor.selection = new vscode.Selection(pos, pos);

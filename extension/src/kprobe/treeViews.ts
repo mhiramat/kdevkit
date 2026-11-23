@@ -7,6 +7,7 @@ export interface JumpToEventArgs {
   line?: number;
   eventIndex?: number;
   probeId?: string;
+  viewColumn?: vscode.ViewColumn;
 }
 
 export class KprobeTreeItem extends vscode.TreeItem {

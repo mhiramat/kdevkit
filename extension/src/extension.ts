@@ -3,6 +3,7 @@ import { KconfigFileWatcher } from './kconfig/configWatcher';
 import { KconfigPanelController } from './kconfig/panelController';
 import { KconfigRpcClient } from './kconfig/rpcClient';
 import { KprobeController } from './kprobe/kprobeController';
+import { TracePlotController } from './kprobe/tracePlotController';
 import { QemuRunner } from './qemu/qemuRunner';
 import { SelftestController } from './selftest/selftestController';
 import { resolveWorkspacePaths, WorkspaceConfigOverrides } from './shared/workspacePaths';
@@ -11,6 +12,7 @@ export interface KdevExtensionApi {
   rpcClient: KconfigRpcClient;
   panelController: KconfigPanelController;
   kprobeController: KprobeController;
+  tracePlotController: TracePlotController;
   selftestController: SelftestController;
   qemuRunner: QemuRunner;
   getLogs: () => string[];
@@ -109,6 +111,13 @@ export function activate(context: vscode.ExtensionContext): KdevExtensionApi | u
     logger,
   });
 
+  const tracePlotController = new TracePlotController({
+    extensionUri: context.extensionUri,
+    workspaceRoot: paths.workspaceRoot,
+    store: kprobeController.store,
+    logger,
+  });
+
   const qemuRunner = new QemuRunner();
   const selftestController = new SelftestController({
     paths,
@@ -117,11 +126,16 @@ export function activate(context: vscode.ExtensionContext): KdevExtensionApi | u
     kprobeController,
     qemuRunner,
     logger,
+    onTraceCaptured: () => tracePlotController.openOrReveal(),
   });
 
   context.subscriptions.push(
     kprobeController,
+    tracePlotController,
     selftestController,
+    vscode.commands.registerCommand('kdev.kprobe.openTracePlot', () => {
+      tracePlotController.openOrReveal();
+    }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('kdev')) {
         const updatedPaths = resolveWorkspacePaths(workspaceRoot, readWorkspaceOverrides());
@@ -135,6 +149,7 @@ export function activate(context: vscode.ExtensionContext): KdevExtensionApi | u
     rpcClient,
     panelController,
     kprobeController,
+    tracePlotController,
     selftestController,
     qemuRunner,
     getLogs: () => [...logHistory],
