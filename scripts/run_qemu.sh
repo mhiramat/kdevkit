@@ -14,6 +14,14 @@ if [ ! -f "${BZIMAGE}" ]; then
   exit 1
 fi
 
+if [ "${ROOTFS_MODE}" != "initramfs" ]; then
+  # TODO (Option C): Support external rootfs images (ext4-image / virtiofs-root)
+  # via -drive file="${ROOTFS_IMAGE}",format=raw,if=virtio while preserving the
+  # -virtfs hostshare -> /mnt/host contract.
+  echo "Error: Unsupported ROOTFS_MODE='${ROOTFS_MODE}'. Only 'initramfs' is currently supported." >&2
+  exit 1
+fi
+
 if [ ! -f "${INITRAMFS}" ]; then
   echo "Error: initramfs not found at ${INITRAMFS}" >&2
   echo "Hint: Run ./scripts/build_initramfs.sh first." >&2

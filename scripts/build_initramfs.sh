@@ -35,8 +35,11 @@ mkdir -p \
   "${ROOTFS_DIR}/tmp" \
   "${ROOTFS_DIR}/usr/bin" \
   "${ROOTFS_DIR}/usr/sbin" \
+  "${ROOTFS_DIR}/usr/lib" \
+  "${ROOTFS_DIR}/usr/lib64" \
   "${ROOTFS_DIR}/mnt/host" \
-  "${ROOTFS_DIR}/lib/modules"
+  "${ROOTFS_DIR}/lib/modules" \
+  "${ROOTFS_DIR}/lib64"
 
 echo "==> [2/4] Installing static BusyBox (${BUSYBOX_BIN}) and kernel modules"
 cp "${BUSYBOX_BIN}" "${ROOTFS_DIR}/bin/busybox"
