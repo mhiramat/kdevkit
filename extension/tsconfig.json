@@ -21,6 +21,9 @@
     "test/unit/perfProbe.test.ts",
     "test/unit/traceParser.test.ts",
     "test/unit/probeStore.test.ts",
+    "test/unit/discovery.test.ts",
+    "test/unit/ktapParser.test.ts",
+    "test/unit/scriptGenerator.test.ts",
     "test/integration/**/*.ts",
     "test/e2e/**/*.ts"
   ],
