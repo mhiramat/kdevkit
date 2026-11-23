@@ -44,6 +44,18 @@ const webviewConfig = {
 };
 
 /** @type {esbuild.BuildOptions} */
+const tracePlotWebviewConfig = {
+  entryPoints: ['webview-ui/src/trace-plot/main.tsx'],
+  bundle: true,
+  outfile: 'dist/webview/tracePlot.js',
+  format: 'iife',
+  platform: 'browser',
+  target: 'es2022',
+  sourcemap: true,
+  logLevel: 'info',
+};
+
+/** @type {esbuild.BuildOptions} */
 const e2eTestConfig = {
   entryPoints: [
     'test/e2e/runTest.ts',
@@ -66,12 +78,14 @@ async function run() {
   if (isWatch) {
     const extCtx = await esbuild.context(extensionHostConfig);
     const webCtx = await esbuild.context(webviewConfig);
-    await Promise.all([extCtx.watch(), webCtx.watch()]);
+    const plotCtx = await esbuild.context(tracePlotWebviewConfig);
+    await Promise.all([extCtx.watch(), webCtx.watch(), plotCtx.watch()]);
     console.log('[esbuild] Watching extension and webview targets...');
   } else {
     const tasks = [
       esbuild.build(extensionHostConfig),
       esbuild.build(webviewConfig),
+      esbuild.build(tracePlotWebviewConfig),
     ];
     if (fs.existsSync(path.join(__dirname, 'test', 'e2e', 'runTest.ts'))) {
       tasks.push(esbuild.build(e2eTestConfig));

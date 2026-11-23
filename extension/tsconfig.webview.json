@@ -16,7 +16,8 @@
     "webview-ui/src/**/*.ts",
     "webview-ui/src/**/*.tsx",
     "test/unit/store.test.ts",
-    "test/unit/components.test.tsx"
+    "test/unit/components.test.tsx",
+    "test/unit/optionBuilders.test.ts"
   ],
   "exclude": [
     "node_modules",
