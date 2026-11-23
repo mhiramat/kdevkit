@@ -2,7 +2,7 @@
 
 A clean, reproducible **Parent Workspace** environment for Linux kernel development in VSCode. It keeps your upstream `linux/` repository 100% untouched while providing layered Kconfig management, sub-second `#ifdef CONFIG_*` dimming via `clangd` + `syncconfig`, out-of-tree kernel/module builds, a rootless static-BusyBox `initramfs` builder, and 9p-enabled QEMU execution with hooks for automated Kprobes and kselftest runs.
 
-For architectural details and Phase 2/3 interface contracts, see [docs/DESIGN_PHASE1.md](./docs/DESIGN_PHASE1.md) (as well as [docs/DESIGN_KCONFIG_BACKEND.md](./docs/DESIGN_KCONFIG_BACKEND.md) and [docs/DESIGN_KCONFIG_FRONTEND.md](./docs/DESIGN_KCONFIG_FRONTEND.md)).
+For architectural details and Phase 2/3 interface contracts, see [docs/DESIGN_PHASE1.md](./docs/DESIGN_PHASE1.md), [docs/DESIGN_KCONFIG_BACKEND.md](./docs/DESIGN_KCONFIG_BACKEND.md), [docs/DESIGN_KCONFIG_FRONTEND.md](./docs/DESIGN_KCONFIG_FRONTEND.md), [docs/DESIGN_PHASE2_KPROBES.md](./docs/DESIGN_PHASE2_KPROBES.md), [docs/DESIGN_PHASE3_SELFTEST.md](./docs/DESIGN_PHASE3_SELFTEST.md), and [docs/DESIGN_PHASE3_TRACE_PLOT.md](./docs/DESIGN_PHASE3_TRACE_PLOT.md).
 
 ---
 
@@ -145,6 +145,7 @@ Once installed, open the Command Palette (`Ctrl+Shift+P`) and run:
 │   ├── configure.sh                # merge_config.sh + olddefconfig + syncconfig + .clangd gen
 │   ├── build_kernel.sh             # Out-of-tree bzImage + modules + compile_commands.json
 │   ├── build_initramfs.sh          # Rootless static BusyBox + modules + /init cpio.gz builder
+│   ├── build_selftest.sh           # Out-of-tree kselftest builder with auto-libs/static staging
 │   ├── run_qemu.sh                 # QEMU launcher with 9p hostshare & KVM auto-detection
 │   └── install_extension.sh        # Symlinks extension/ into local VSCode/Antigravity extensions dir
 ├── build/
@@ -211,6 +212,30 @@ Boots `bzImage` and `initramfs.cpio.gz` in QEMU with serial console attached to 
   * If `build/current/shared/setup_kprobes.sh` is executable (`chmod +x`), `/init` executes it automatically before running the target workload.
   * If `build/current/shared/run_target.sh` is executable (`chmod +x`), `/init` runs it non-interactively, records its exit status to `build/current/shared/exit_code`, dumps `trace.log`, and powers off automatically.
 
+### 5.5 Running Linux Kernel Selftests (`kselftest`) in QEMU
+
+`kdevkit` integrates `linux/tools/testing/selftests/` with VSCode's native **Testing** (Test Explorer) view, the Kconfig SAT solver, and QEMU execution while keeping `linux/` 100% clean.
+
+#### In VSCode (Test Explorer UI)
+1. **Select Selftest Targets:** Open the **Testing** view in the Activity Bar and click the **Select Selftest Targets...** (`$(checklist)`) icon in the view title bar — or run **`kdev: Select Selftest Targets...`** (`kdev.selftest.selectTargets`) from the Command Palette. Pick the subsystem directories you want to work on (e.g., `breakpoints`, `ftrace`); targets containing a `config` file are highlighted. The selection is saved to `kdev.selftest.targets`.
+2. **Sync Missing Kconfig Requirements:** Targets whose `config` / `config.<arch>` requirements are missing from `build/current/.config` show a warning badge in Test Explorer. Click the wrench icon (**Inject & Solve Selftest Kconfig**) on the target item (or right-click → **`kdev: Inject & Solve Selftest Kconfig`**) to symlink the fragment into `build/current/user_injected/`, register it in `layers.json`, and open the Kconfig Editor with auto-resolved dependencies.
+3. **Run Tests in QEMU:** Click the Run button on any target, test program, or individual `ftrace` `.tc` subtest using either Test Run Profile:
+   * **`Run in QEMU`** *(default)*: Temporarily mutes `setup_kprobes.sh`, builds the selected selftest(s) if `kdev.selftest.autoBuildBeforeRun` is enabled, boots QEMU, streams live serial & **KTAP** pass/fail/skip results to Test Results, and removes `shared/run_target.sh` on exit.
+   * **`Run in QEMU with Active Kprobes`**: Exports active Phase 2 Kprobes to `setup_kprobes.sh`, executes the selftest in QEMU, automatically reloads `build/current/shared/trace.log`, and optionally opens the **Trace Plotter** (`kdev.tracePlot.autoOpenOnSelftestTrace`).
+
+#### From the CLI (`scripts/build_selftest.sh`)
+You can also build and stage selftest targets directly from a terminal into `build/current/shared/kselftest/` (with build objects in `build/current/kselftest-obj/`):
+
+```bash
+# Default Option A (auto-libs): automatically stages required .so files and dynamic linker into shared/kselftest-libs/
+./scripts/build_selftest.sh breakpoints ftrace
+
+# Optional Option B (static): links C test binaries statically (falls back to auto-libs with a warning if a Makefile ignores LDFLAGS)
+./scripts/build_selftest.sh --link-mode static breakpoints
+```
+
+Key VSCode settings under `kdev.selftest.*`: `targets`, `linkMode` (`"auto-libs"` | `"static"`), `targetOptions` (per-target overrides), `checkConfigBeforeRun` (`"prompt"` | `"off"`), `timeoutSec`, `bootTimeoutSec`, and `autoBuildBeforeRun`.
+
 ---
 
 ## 6. Environment Customization
@@ -229,6 +254,7 @@ All scripts source [`scripts/env.sh`](./scripts/env.sh) and respect environment 
 | `QEMU_BIN` | `qemu-system-x86_64` | QEMU system binary. |
 | `QEMU_MEM` | `2G` | Guest RAM allocation. |
 | `QEMU_SMP` | `2` | Guest vCPU count. |
+| `SELFTEST_LINK_MODE` | `auto-libs` | Selftest C binary mode (`auto-libs` or `static`). |
 | `LLVM` / `MAKE_ARGS` | *(unset)* | Optional flags forwarded to `make` (e.g. `LLVM=1`). |
 
 ---
