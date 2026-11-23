@@ -19,6 +19,7 @@
     "onView:kdev.overview",
     "onView:kdev.kprobe.probesView",
     "onView:kdev.kprobe.eventsView",
+    "onView:workbench.view.testing",
     "onLanguage:c",
     "workspaceContains:build/current/shared/probes.json"
   ],
@@ -305,6 +306,38 @@
           "command": "kdev.kprobe.filterEvents",
           "when": "view == kdev.kprobe.eventsView",
           "group": "navigation@3"
+        },
+        {
+          "command": "kdev.selftest.selectTargets",
+          "when": "view == workbench.view.testing",
+          "group": "navigation@10"
+        },
+        {
+          "command": "kdev.selftest.buildSelected",
+          "when": "view == workbench.view.testing",
+          "group": "navigation@11"
+        }
+      ],
+      "testing/item/context": [
+        {
+          "command": "kdev.selftest.syncTargetConfig",
+          "when": "controllerId == kdevSelftest",
+          "group": "inline@1"
+        },
+        {
+          "command": "kdev.selftest.syncTargetConfig",
+          "when": "controllerId == kdevSelftest",
+          "group": "1_kdev@1"
+        },
+        {
+          "command": "kdev.selftest.buildSelected",
+          "when": "controllerId == kdevSelftest",
+          "group": "1_kdev@2"
+        },
+        {
+          "command": "kdev.selftest.selectTargets",
+          "when": "controllerId == kdevSelftest",
+          "group": "1_kdev@3"
         }
       ],
       "view/item/context": [
