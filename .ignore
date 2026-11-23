@@ -1,0 +1,4 @@
+# Allow workspace search (ripgrep) to search inside the upstream Linux kernel tree(s)
+# while keeping them ignored by git.
+!/linux/
+!/linux-*/
