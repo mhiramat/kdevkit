@@ -131,6 +131,18 @@ export const App: React.FC = () => {
           });
           break;
 
+        case 'openSolvePreview':
+          dispatch({
+            type: 'SOLVE_START',
+            requests: msg.requests,
+            ignorePins: false,
+          });
+          dispatch({
+            type: 'SOLVE_SUCCESS',
+            response: msg.response,
+          });
+          break;
+
         case 'response': {
           const handler = pendingHandlersRef.current.get(msg.reqId);
           pendingHandlersRef.current.delete(msg.reqId);

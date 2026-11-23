@@ -134,4 +134,9 @@ export type HostToWebviewMessage =
   | { type: 'response'; reqId: string; ok: true; payload: unknown }
   | { type: 'response'; reqId: string; ok: false; error: { code: number; message: string; data?: unknown } }
   | { type: 'externalConfigChanged'; changedAt: number }
-  | { type: 'backendStatus'; state: BackendLifecycleState; message?: string };
+  | { type: 'backendStatus'; state: BackendLifecycleState; message?: string }
+  | {
+      type: 'openSolvePreview';
+      requests: Array<{ symbol: string; value: string }>;
+      response: SolveResponse;
+    };

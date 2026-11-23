@@ -6,6 +6,7 @@ import {
   ApplyResponse,
   ConfigLayer,
   HostToWebviewMessage,
+  SolveResponse,
   WebviewToHostMessage,
 } from '../shared/protocol';
 import { ResolvedWorkspacePaths } from '../shared/workspacePaths';
@@ -16,9 +17,15 @@ export class KconfigPanelController implements vscode.Disposable {
   public static readonly viewType = 'kdev.kconfigEditor';
 
   private panel: vscode.WebviewPanel | null = null;
+  private webviewReady = false;
   private initialized = false;
   private applyingCount = 0;
   private clangdRestartCount = 0;
+  private pendingSolvePreview: {
+    requests: Array<{ symbol: string; value: string }>;
+    response: SolveResponse;
+  } | null = null;
+  private readonly applyListeners = new Set<(res: ApplyResponse) => void>();
 
   private readonly extensionUri: vscode.Uri;
   private readonly paths: ResolvedWorkspacePaths;
@@ -76,7 +83,31 @@ export class KconfigPanelController implements vscode.Disposable {
 
     panel.onDidDispose(() => {
       this.panel = null;
+      this.webviewReady = false;
     });
+  }
+
+  public onDidApplyConfig(listener: (res: ApplyResponse) => void): vscode.Disposable {
+    this.applyListeners.add(listener);
+    return new vscode.Disposable(() => {
+      this.applyListeners.delete(listener);
+    });
+  }
+
+  public openWithSolvePreview(
+    requests: Array<{ symbol: string; value: string }>,
+    response: SolveResponse
+  ): void {
+    this.openOrReveal();
+    if (this.webviewReady) {
+      this.postToWebview({
+        type: 'openSolvePreview',
+        requests,
+        response,
+      });
+    } else {
+      this.pendingSolvePreview = { requests, response };
+    }
   }
 
   public postToWebview(message: HostToWebviewMessage): void {
@@ -143,6 +174,16 @@ export class KconfigPanelController implements vscode.Disposable {
         layers: layersRes.layers,
         rootNodes: treeRes.nodes,
       });
+      this.webviewReady = true;
+      if (this.pendingSolvePreview) {
+        const preview = this.pendingSolvePreview;
+        this.pendingSolvePreview = null;
+        this.postToWebview({
+          type: 'openSolvePreview',
+          requests: preview.requests,
+          response: preview.response,
+        });
+      }
     } catch (err: any) {
       this.logger(`[panelController] Initialization error: ${err?.message ?? err}`);
       this.postToWebview({
@@ -275,6 +316,14 @@ export class KconfigPanelController implements vscode.Disposable {
         void vscode.window.showWarningMessage(
           `Kconfig post-verification detected mismatches after olddefconfig: ${summary}`
         );
+      }
+
+      for (const listener of this.applyListeners) {
+        try {
+          listener(res);
+        } catch (err: any) {
+          this.logger(`[panelController] apply listener error: ${err?.message ?? err}`);
+        }
       }
 
       return res;
