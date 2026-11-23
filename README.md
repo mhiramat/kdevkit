@@ -2,7 +2,7 @@
 
 A clean, reproducible **Parent Workspace** environment for Linux kernel development in VSCode. It keeps your upstream `linux/` repository 100% untouched while providing layered Kconfig management, sub-second `#ifdef CONFIG_*` dimming via `clangd` + `syncconfig`, out-of-tree kernel/module builds, a rootless static-BusyBox `initramfs` builder, and 9p-enabled QEMU execution with hooks for automated Kprobes and kselftest runs.
 
-For architectural details and Phase 2/3 interface contracts, see [DESIGN.md](./DESIGN.md).
+For architectural details and Phase 2/3 interface contracts, see [docs/DESIGN_PHASE1.md](./docs/DESIGN_PHASE1.md) (as well as [docs/DESIGN_KCONFIG_BACKEND.md](./docs/DESIGN_KCONFIG_BACKEND.md) and [docs/DESIGN_KCONFIG_FRONTEND.md](./docs/DESIGN_KCONFIG_FRONTEND.md)).
 
 ---
 
@@ -122,7 +122,10 @@ Once installed, open the Command Palette (`Ctrl+Shift+P`) and run:
 
 ```text
 .                                   # VSCode Workspace Root
-├── DESIGN.md                       # Phase 1 Architecture & Design Specification
+├── docs/                           # Architecture & design specifications
+│   ├── DESIGN_PHASE1.md            # Phase 1 Architecture & Design Specification
+│   ├── DESIGN_KCONFIG_BACKEND.md   # Kconfig SAT solver backend specification
+│   └── DESIGN_KCONFIG_FRONTEND.md  # Kconfig VSCode frontend specification
 ├── README.md                       # Setup & usage guide
 ├── setup.sh                        # Prerequisite checker & workspace bootstrap script
 ├── .gitignore                      # Ignores linux/, build/, generated .clangd, .vscode/settings.json, user.config

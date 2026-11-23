@@ -1,4 +1,4 @@
-"""Unit tests for all 8 Kconfig SAT semantics specified in DESIGN_KCONFIG_BACKEND.md Section 6.1."""
+"""Unit tests for all 8 Kconfig SAT semantics specified in docs/DESIGN_KCONFIG_BACKEND.md Section 6.1."""
 
 from __future__ import annotations
 

@@ -43,8 +43,9 @@ Add the following paths under `kdev-workspace/` without modifying any files insi
 
 ```text
 kdev-workspace/
-├── DESIGN.md                           # Phase 1 design (existing)
-├── DESIGN_KCONFIG_BACKEND.md           # This document
+├── docs/
+│   ├── DESIGN_PHASE1.md                # Phase 1 design (existing)
+│   └── DESIGN_KCONFIG_BACKEND.md       # This document
 ├── configs/
 │   ├── qemu.config                     # [Pinned] Phase 1 QEMU boot fragment
 │   └── trace.config                    # [Pinned] Phase 1 DWARF + Kprobes fragment

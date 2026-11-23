@@ -48,7 +48,8 @@ Instead of opening the Linux kernel repository directly in VSCode, the kernel tr
 
 ```text
 kdev-workspace/                     # VSCode Workspace Root
-├── DESIGN.md                       # This document
+├── docs/
+│   └── DESIGN_PHASE1.md            # This document
 ├── .gitignore                      # Ignores linux/, build/, generated .clangd, and .vscode/settings.json
 ├── .clangd                         # Generated from scripts/clangd.template (scoped to linux/)
 ├── .vscode/

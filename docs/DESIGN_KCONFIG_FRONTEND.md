@@ -20,9 +20,10 @@ The frontend lives under `kdev-workspace/extension/` so that `linux/` remains un
 
 ```text
 kdev-workspace/
-├── DESIGN.md
-├── DESIGN_KCONFIG_BACKEND.md
-├── DESIGN_KCONFIG_FRONTEND.md           # This document
+├── docs/
+│   ├── DESIGN_PHASE1.md
+│   ├── DESIGN_KCONFIG_BACKEND.md
+│   └── DESIGN_KCONFIG_FRONTEND.md       # This document
 ├── backend/                             # Python Kconfig backend
 ├── extension/                           # Unified VSCode Extension
 │   ├── package.json                     # Extension manifest, settings, commands, scripts
