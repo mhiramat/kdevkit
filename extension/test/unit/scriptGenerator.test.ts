@@ -42,7 +42,7 @@ describe('Selftest Guest Script Generator', () => {
     expect(script).toContain('kselftest_override_timeout=90');
     expect(script).toContain('=== KDEV_SELFTEST_BEGIN ===');
     expect(script).toContain("./run_kselftest.sh -t 'breakpoints:breakpoint_test'");
-    expect(script).toContain("./ftracetest 'test.d/00basic/basic1.tc'");
+    expect(script).toContain("./ftracetest -K -v 'test.d/00basic/basic1.tc'");
     expect(script).toContain('=== KDEV_SELFTEST_END rc=$RC ===');
 
     // Verify POSIX syntax with /bin/sh -n

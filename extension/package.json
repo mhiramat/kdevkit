@@ -86,6 +86,16 @@
           "default": [],
           "description": "Whitelist of tools/testing/selftests/ targets shown in Test Explorer."
         },
+        "kdev.selftest.excludeTests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "ftrace:boottime-ktap"
+          ],
+          "description": "Test IDs (<target>:<test>) skipped when running parent targets inside QEMU (e.g. host-only tests that launch nested QEMU)."
+        },
         "kdev.selftest.linkMode": {
           "type": "string",
           "enum": [

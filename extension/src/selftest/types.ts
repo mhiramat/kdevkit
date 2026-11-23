@@ -50,7 +50,7 @@ export interface ConfigCheckResult {
   configPaths: string[];
 }
 
-export type KtapStatus = 'pass' | 'fail' | 'skip' | 'xfail' | 'timeout';
+export type KtapStatus = 'pass' | 'fail' | 'skip' | 'xfail' | 'timeout' | 'unresolved';
 
 export type KtapEvent =
   | {
@@ -76,6 +76,7 @@ export type KtapEvent =
       reason?: string;
       target?: string;
       test?: string;
+      diagnostics?: string[];
       raw: string;
     }
   | {
@@ -85,6 +86,7 @@ export type KtapEvent =
       status: KtapStatus;
       description: string;
       reason?: string;
+      diagnostics?: string[];
       raw: string;
     }
   | {

@@ -4,6 +4,7 @@ export const KDEV_SELFTEST_BEGIN = '=== KDEV_SELFTEST_BEGIN ===';
 const KDEV_SELFTEST_END_RE = /^=== KDEV_SELFTEST_END rc=(-?\d+) ===$/;
 const SUITE_START_RE = /^#\s*selftests:\s*([^:\s]+):\s*(.+?)\s*$/;
 const TEST_RESULT_RE = /^(\s*)(not ok|ok)\s+(\d+)(?:\s+-\s+|\s+)?(.*)$/;
+const PREFIXED_SUBTEST_RE = /^#\s+(\s*)(not ok|ok)\s+(\d+)(?:\s+-\s+|\s+)?(.*)$/;
 const SELFTEST_DESC_RE = /^selftests:\s*([^:\s]+):\s*(.+?)\s*$/;
 const CRASH_TRIGGER_RE =
   /(?:^|\s)(?:BUG:|Oops:|Kernel panic\b|Call Trace:|KASAN:|UBSAN:|general protection fault|Unable to handle kernel)/;
@@ -51,6 +52,15 @@ function parseDirective(rawDesc: string, isOk: boolean): {
     };
   }
 
+  const unresolvedMatch = directiveRaw.match(/^UNRESOLVED(?:\s+(.*))?$/i);
+  if (unresolvedMatch) {
+    return {
+      status: 'unresolved',
+      description,
+      reason: unresolvedMatch[1]?.trim() || 'UNRESOLVED',
+    };
+  }
+
   // Non-directive trailing comment
   return {
     status: isOk ? 'pass' : 'fail',
@@ -69,6 +79,7 @@ export class KtapStreamParser {
   private buffer = '';
   private inSession = false;
   private recentLines: string[] = [];
+  private pendingDiagnostics: string[] = [];
   private crashReported = false;
   private crashExcerpt: string[] = [];
 
@@ -148,10 +159,36 @@ export class KtapStreamParser {
 
     const suiteMatch = rawLine.match(SUITE_START_RE);
     if (suiteMatch) {
+      this.pendingDiagnostics = [];
       events.push({
         type: 'suiteStart',
         target: suiteMatch[1],
         test: suiteMatch[2].trim(),
+        raw: rawLine,
+      });
+      return events;
+    }
+
+    // Subtests emitted through kselftest/runner.sh's tap_prefix (`# ok N ...` / `# not ok N ...`)
+    const prefixedSubMatch = rawLine.match(PREFIXED_SUBTEST_RE);
+    if (prefixedSubMatch) {
+      const extraIndent = prefixedSubMatch[1];
+      const isOk = prefixedSubMatch[2] === 'ok';
+      const index = Number.parseInt(prefixedSubMatch[3], 10);
+      const rest = prefixedSubMatch[4] ?? '';
+      const { status, description, reason } = parseDirective(rest, isOk);
+      const depth = 1 + Math.floor(extraIndent.length / 4);
+      const diagnostics =
+        this.pendingDiagnostics.length > 0 ? [...this.pendingDiagnostics] : undefined;
+      this.pendingDiagnostics = [];
+      events.push({
+        type: 'subtestResult',
+        depth,
+        index,
+        status,
+        description,
+        reason,
+        diagnostics,
         raw: rawLine,
       });
       return events;
@@ -164,6 +201,9 @@ export class KtapStreamParser {
       const index = Number.parseInt(resultMatch[3], 10);
       const rest = resultMatch[4] ?? '';
       const { status, description, reason } = parseDirective(rest, isOk);
+      const diagnostics =
+        this.pendingDiagnostics.length > 0 ? [...this.pendingDiagnostics] : undefined;
+      this.pendingDiagnostics = [];
 
       if (indent.length >= 2) {
         const depth = Math.max(1, Math.floor(indent.length / 4) || 1);
@@ -174,6 +214,7 @@ export class KtapStreamParser {
           status,
           description,
           reason,
+          diagnostics,
           raw: rawLine,
         });
       } else {
@@ -186,6 +227,7 @@ export class KtapStreamParser {
           reason,
           target: descMatch ? descMatch[1] : undefined,
           test: descMatch ? descMatch[2].trim() : undefined,
+          diagnostics,
           raw: rawLine,
         });
       }
@@ -193,9 +235,16 @@ export class KtapStreamParser {
     }
 
     if (trimmed.startsWith('#')) {
+      const msg = trimmed.slice(1).trim();
+      if (msg && !/^TAP version\b/i.test(msg) && !/^\d+\.\.\d+$/.test(msg)) {
+        this.pendingDiagnostics.push(msg);
+        if (this.pendingDiagnostics.length > 20) {
+          this.pendingDiagnostics.shift();
+        }
+      }
       events.push({
         type: 'diagnostic',
-        message: trimmed.slice(1).trim(),
+        message: msg,
         raw: rawLine,
       });
     }

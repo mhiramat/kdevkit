@@ -92,7 +92,7 @@ export function generateSelftestRunScript(options: RunScriptOptions): string {
     const tcArgs = ftracetestItems
       .map((item) => shellQuote(item.relativePath || item.name))
       .join(' ');
-    lines.push('(cd /mnt/host/kselftest/ftrace && ./ftracetest ' + tcArgs + ')');
+    lines.push('(cd /mnt/host/kselftest/ftrace && ./ftracetest -K -v ' + tcArgs + ')');
     lines.push('STEP_RC=$?');
     lines.push('if [ "$STEP_RC" -ne 0 ]; then RC="$STEP_RC"; fi');
   }

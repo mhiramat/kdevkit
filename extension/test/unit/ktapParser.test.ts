@@ -93,4 +93,42 @@ describe('Streaming KTAP v1 Parser', () => {
       line: expect.stringContaining('BUG: kernel NULL pointer dereference'),
     });
   });
+
+  it('parses #-prefixed runner.sh subtests and UNRESOLVED directives with diagnostics', () => {
+    const parser = new KtapStreamParser();
+    const lines = [
+      KDEV_SELFTEST_BEGIN,
+      'TAP version 13',
+      '1..1',
+      '# selftests: ftrace: ftracetest-ktap',
+      '# TAP version 13',
+      '# 1..3',
+      '# ok 1 Basic trace file check',
+      '# Missing required tool: ping',
+      '# not ok 2 Ping trace test # UNRESOLVED',
+      '# ok 3 Optional feature # SKIP',
+      'ok 1 selftests: ftrace: ftracetest-ktap',
+      '=== KDEV_SELFTEST_END rc=0 ===',
+    ];
+
+    const events = lines.flatMap((l) => parser.feedLine(l));
+    const subtests = events.filter((e) => e.type === 'subtestResult');
+    expect(subtests).toHaveLength(3);
+    expect(subtests[0]).toMatchObject({
+      index: 1,
+      status: 'pass',
+      description: 'Basic trace file check',
+    });
+    expect(subtests[1]).toMatchObject({
+      index: 2,
+      status: 'unresolved',
+      description: 'Ping trace test',
+      diagnostics: ['Missing required tool: ping'],
+    });
+    expect(subtests[2]).toMatchObject({
+      index: 3,
+      status: 'skip',
+      description: 'Optional feature',
+    });
+  });
 });

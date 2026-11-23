@@ -35,6 +35,7 @@ export interface SelftestControllerOptions {
 
 interface SelftestSettings {
   targets: string[];
+  excludeTests: string[];
   linkMode: SelftestLinkMode;
   targetOptions: Record<string, TargetOverrideOptions>;
   checkConfigBeforeRun: CheckConfigBeforeRunMode;
@@ -132,6 +133,7 @@ export class SelftestController implements vscode.Disposable {
     const cfg = vscode.workspace.getConfiguration('kdev.selftest');
     return {
       targets: cfg.get<string[]>('targets', []),
+      excludeTests: cfg.get<string[]>('excludeTests', ['ftrace:boottime-ktap']),
       linkMode: cfg.get<SelftestLinkMode>('linkMode', 'auto-libs'),
       targetOptions: cfg.get<Record<string, TargetOverrideOptions>>('targetOptions', {}),
       checkConfigBeforeRun: cfg.get<CheckConfigBeforeRunMode>('checkConfigBeforeRun', 'prompt'),
@@ -190,12 +192,16 @@ export class SelftestController implements vscode.Disposable {
         kselftestListPath,
       });
 
+      const excludedSet = new Set(settings.excludeTests);
       for (const testCase of tests) {
         const childItem = this.testController.createTestItem(
           testCase.id,
           testCase.name,
           targetUri
         );
+        if (excludedSet.has(testCase.id)) {
+          childItem.description = '(excluded in QEMU)';
+        }
         this.itemMeta.set(testCase.id, testCase);
         parentItem.children.add(childItem);
       }
@@ -393,17 +399,23 @@ export class SelftestController implements vscode.Disposable {
     }
   }
 
-  private collectRequestedItems(request: vscode.TestRunRequest): {
+  private collectRequestedItems(
+    request: vscode.TestRunRequest,
+    excludeTests: string[]
+  ): {
     testItems: vscode.TestItem[];
+    skippedExcludedItems: vscode.TestItem[];
     selftestCases: SelftestItem[];
     targets: string[];
   } {
     const excluded = new Set(request.exclude ?? []);
+    const excludedIds = new Set(excludeTests);
     const testItems: vscode.TestItem[] = [];
+    const skippedExcludedItems: vscode.TestItem[] = [];
     const selftestCases: SelftestItem[] = [];
     const targetSet = new Set<string>();
 
-    const visit = (item: vscode.TestItem) => {
+    const visit = (item: vscode.TestItem, explicitDirectSelection: boolean) => {
       if (excluded.has(item)) {
         return;
       }
@@ -425,9 +437,14 @@ export class SelftestController implements vscode.Disposable {
             }
           });
           for (const child of programChildren.length > 0 ? programChildren : allChildren) {
-            visit(child);
+            visit(child, false);
           }
         }
+        return;
+      }
+
+      if (!explicitDirectSelection && excludedIds.has(item.id)) {
+        skippedExcludedItems.push(item);
         return;
       }
 
@@ -441,14 +458,15 @@ export class SelftestController implements vscode.Disposable {
 
     if (request.include && request.include.length > 0) {
       for (const item of request.include) {
-        visit(item);
+        visit(item, !item.id.startsWith('target:'));
       }
     } else {
-      this.testController.items.forEach((item) => visit(item));
+      this.testController.items.forEach((item) => visit(item, false));
     }
 
     return {
       testItems,
+      skippedExcludedItems,
       selftestCases,
       targets: Array.from(targetSet),
     };
@@ -460,12 +478,20 @@ export class SelftestController implements vscode.Disposable {
     withKprobes: boolean
   ): Promise<void> {
     const settings = this.readSettings();
-    const { testItems, selftestCases, targets } = this.collectRequestedItems(request);
+    const { testItems, skippedExcludedItems, selftestCases, targets } =
+      this.collectRequestedItems(request, settings.excludeTests);
 
     const run = this.testController.createTestRun(request);
     const appendLine = (line: string) => {
       run.appendOutput(`${line}\r\n`);
     };
+
+    for (const skippedItem of skippedExcludedItems) {
+      appendLine(
+        `==> Skipping '${skippedItem.id}' (listed in kdev.selftest.excludeTests for QEMU guest runs).`
+      );
+      run.skipped(skippedItem);
+    }
 
     if (targets.length === 0) {
       appendLine('No selftest targets selected. Run "kdev: Select Selftest Targets..." first.');
@@ -613,8 +639,60 @@ export class SelftestController implements vscode.Disposable {
               const matched = itemByKey.get(key) ?? this.targetItems.get(ev.target);
               if (matched) {
                 activeItem = matched;
+                matched.children.replace([]);
                 startedAtByItem.set(matched.id, Date.now());
                 run.started(matched);
+              }
+            } else if (ev.type === 'subtestResult') {
+              const parent =
+                activeItem ?? (testItems.length === 1 ? testItems[0] : undefined);
+              if (parent) {
+                const subId = `${parent.id}::sub::${ev.index}`;
+                let subItem = parent.children.get(subId);
+                if (!subItem) {
+                  subItem = this.testController.createTestItem(
+                    subId,
+                    `${ev.index}. ${ev.description || `subtest ${ev.index}`}`,
+                    parent.uri
+                  );
+                  parent.children.add(subItem);
+                }
+                const diagText =
+                  ev.diagnostics && ev.diagnostics.length > 0
+                    ? `\n${ev.diagnostics.join('\n')}`
+                    : '';
+                if (ev.status === 'pass') {
+                  subItem.description = undefined;
+                  run.passed(subItem);
+                } else if (ev.status === 'xfail') {
+                  subItem.description = '(XFAIL)';
+                  run.passed(subItem);
+                } else if (ev.status === 'skip') {
+                  subItem.description = ev.reason ? `(SKIP: ${ev.reason})` : '(SKIP)';
+                  run.skipped(subItem);
+                } else if (ev.status === 'unresolved') {
+                  subItem.description = '(UNRESOLVED)';
+                  run.errored(
+                    subItem,
+                    new vscode.TestMessage(
+                      `UNRESOLVED: ${ev.description}${ev.reason && ev.reason !== 'UNRESOLVED' ? ` (${ev.reason})` : ''}${diagText}`
+                    )
+                  );
+                } else if (ev.status === 'timeout') {
+                  subItem.description = '(TIMEOUT)';
+                  run.failed(
+                    subItem,
+                    new vscode.TestMessage(
+                      `Timeout: ${ev.reason ?? ev.description}${diagText}`
+                    )
+                  );
+                } else {
+                  subItem.description = '(FAIL)';
+                  run.failed(
+                    subItem,
+                    new vscode.TestMessage(`${ev.raw}${diagText}`)
+                  );
+                }
               }
             } else if (ev.type === 'testResult') {
               const key =
@@ -631,6 +709,16 @@ export class SelftestController implements vscode.Disposable {
                   run.passed(matched, duration);
                 } else if (ev.status === 'skip') {
                   run.skipped(matched);
+                } else if (ev.status === 'unresolved') {
+                  const diagText =
+                    ev.diagnostics && ev.diagnostics.length > 0
+                      ? `\n${ev.diagnostics.join('\n')}`
+                      : '';
+                  run.errored(
+                    matched,
+                    new vscode.TestMessage(`UNRESOLVED: ${ev.description}${diagText}`),
+                    duration
+                  );
                 } else if (ev.status === 'timeout') {
                   run.failed(
                     matched,
