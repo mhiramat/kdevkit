@@ -66,16 +66,24 @@ if [ ! -f "${BUILD_DIR}/solver_overlay.config" ]; then
 fi
 
 echo "==> [3/4] Creating Python virtual environment at ${VENV_DIR}"
+NEED_RECREATE=0
 if [ ! -x "${VENV_DIR}/bin/python" ]; then
+  NEED_RECREATE=1
+elif [ ! -x "${VENV_DIR}/bin/pip" ] || ! "${VENV_DIR}/bin/pip" --version >/dev/null 2>&1; then
+  echo "    [WARN] Existing virtualenv at ${VENV_DIR} is broken (e.g. workspace was moved); recreating..."
+  NEED_RECREATE=1
+fi
+if [ "${NEED_RECREATE}" -eq 1 ]; then
+  rm -rf "${VENV_DIR}"
   python3 -m venv "${VENV_DIR}"
 fi
 
 echo "==> [4/4] Installing kconfig-server package into ${VENV_DIR}"
-"${VENV_DIR}/bin/pip" install --upgrade pip
+"${VENV_DIR}/bin/python" -m pip install --upgrade pip
 if [ "${INSTALL_DEV}" -eq 1 ]; then
-  "${VENV_DIR}/bin/pip" install -e "${BACKEND_DIR}[dev]"
+  "${VENV_DIR}/bin/python" -m pip install -e "${BACKEND_DIR}[dev]"
 else
-  "${VENV_DIR}/bin/pip" install -e "${BACKEND_DIR}"
+  "${VENV_DIR}/bin/python" -m pip install -e "${BACKEND_DIR}"
 fi
 
 "${VENV_DIR}/bin/kconfig-server" --help >/dev/null
