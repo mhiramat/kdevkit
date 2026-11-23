@@ -98,4 +98,26 @@ sleep 5
     expect(res.timedOut).toBe(false);
     expect(runner.isRunning()).toBe(false);
   });
+
+  it('triggers idle timeout when guest stops emitting output after boot sentinel', async () => {
+    const { dir, scriptPath } = makeScript(`
+echo "=== KDEV_SELFTEST_BEGIN ==="
+echo "ok 1 started"
+sleep 5
+`);
+    const runner = new QemuRunner();
+    const res = await runner.run({
+      workspaceRoot: dir,
+      scriptPath,
+      timeoutSec: 10,
+      bootTimeoutSec: 5,
+      idleTimeoutSec: 0.3,
+      killGraceMs: 100,
+    });
+
+    expect(res.idleTimedOut).toBe(true);
+    expect(res.bootTimedOut).toBe(false);
+    expect(res.timedOut).toBe(false);
+    expect(runner.isRunning()).toBe(false);
+  });
 });

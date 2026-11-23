@@ -111,15 +111,21 @@
         },
         "kdev.selftest.timeoutSec": {
           "type": "number",
-          "default": 300,
-          "minimum": 10,
-          "description": "Overall QEMU selftest execution timeout in seconds."
+          "default": 1800,
+          "minimum": 0,
+          "description": "Overall QEMU selftest execution timeout in seconds (0 disables the overall cap; idleTimeoutSec still detects hangs)."
         },
         "kdev.selftest.bootTimeoutSec": {
           "type": "number",
           "default": 60,
           "minimum": 5,
           "description": "Maximum wait time for guest kernel boot to reach run_target.sh."
+        },
+        "kdev.selftest.idleTimeoutSec": {
+          "type": "number",
+          "default": 180,
+          "minimum": 0,
+          "description": "Inactivity watchdog timeout in seconds after guest boot; resets on every output line (0 disables)."
         },
         "kdev.selftest.autoBuildBeforeRun": {
           "type": "boolean",

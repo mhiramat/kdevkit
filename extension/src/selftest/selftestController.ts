@@ -40,6 +40,7 @@ interface SelftestSettings {
   checkConfigBeforeRun: CheckConfigBeforeRunMode;
   timeoutSec: number;
   bootTimeoutSec: number;
+  idleTimeoutSec: number;
   autoBuildBeforeRun: boolean;
   keepRunScript: boolean;
 }
@@ -134,8 +135,9 @@ export class SelftestController implements vscode.Disposable {
       linkMode: cfg.get<SelftestLinkMode>('linkMode', 'auto-libs'),
       targetOptions: cfg.get<Record<string, TargetOverrideOptions>>('targetOptions', {}),
       checkConfigBeforeRun: cfg.get<CheckConfigBeforeRunMode>('checkConfigBeforeRun', 'prompt'),
-      timeoutSec: cfg.get<number>('timeoutSec', 300),
+      timeoutSec: cfg.get<number>('timeoutSec', 1800),
       bootTimeoutSec: cfg.get<number>('bootTimeoutSec', 60),
+      idleTimeoutSec: cfg.get<number>('idleTimeoutSec', 180),
       autoBuildBeforeRun: cfg.get<boolean>('autoBuildBeforeRun', true),
       keepRunScript: cfg.get<boolean>('keepRunScript', false),
     };
@@ -411,7 +413,20 @@ export class SelftestController implements vscode.Disposable {
         if (item.children.size === 0) {
           testItems.push(item);
         } else {
-          item.children.forEach((child) => visit(child));
+          // If this target has top-level programs (e.g. ftracetest-ktap), run only
+          // those when the parent target is selected so subtest `.tc` items are not
+          // executed a second time in the same QEMU boot.
+          const programChildren: vscode.TestItem[] = [];
+          const allChildren: vscode.TestItem[] = [];
+          item.children.forEach((child) => {
+            allChildren.push(child);
+            if (this.itemMeta.get(child.id)?.kind === 'program') {
+              programChildren.push(child);
+            }
+          });
+          for (const child of programChildren.length > 0 ? programChildren : allChildren) {
+            visit(child);
+          }
         }
         return;
       }
@@ -548,7 +563,6 @@ export class SelftestController implements vscode.Disposable {
     const scriptContent = generateSelftestRunScript({
       items: selftestCases,
       collections: selftestCases.length === 0 ? targets : [],
-      kselftestTimeoutSec: Math.min(effectiveTimeoutSec, 180),
     });
 
     fs.mkdirSync(this.paths.sharedDir, { recursive: true });
@@ -587,6 +601,7 @@ export class SelftestController implements vscode.Disposable {
         },
         timeoutSec: effectiveTimeoutSec,
         bootTimeoutSec: effectiveBootTimeoutSec,
+        idleTimeoutSec: settings.idleTimeoutSec,
         exitCodePath,
         signal: abortController.signal,
         onLine: (line) => {
@@ -656,6 +671,13 @@ export class SelftestController implements vscode.Disposable {
             item,
             new vscode.TestMessage(
               `QEMU boot timed out after ${effectiveBootTimeoutSec}s before reaching run_target.sh.`
+            )
+          );
+        } else if (result.idleTimedOut) {
+          run.failed(
+            item,
+            new vscode.TestMessage(
+              `QEMU selftest produced no output for ${settings.idleTimeoutSec}s (idle timeout).`
             )
           );
         } else if (result.timedOut) {

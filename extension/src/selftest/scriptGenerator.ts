@@ -6,7 +6,11 @@ export interface RunScriptOptions {
   items: SelftestItem[];
   /** Whole target collections to run via `./run_kselftest.sh -c <target>`. */
   collections?: string[];
-  /** Override per-test kselftest timeout inside guest (default 120s). */
+  /**
+   * Optional override for per-test kselftest timeout inside guest.
+   * When omitted, kselftest's own per-target `settings` file (e.g. `ftrace/settings`
+   * with `timeout=0`) is respected.
+   */
   kselftestTimeoutSec?: number;
 }
 
@@ -22,7 +26,10 @@ export function shellQuote(value: string): string {
  * inside the Phase 1 BusyBox initramfs guest.
  */
 export function generateSelftestRunScript(options: RunScriptOptions): string {
-  const kselftestTimeout = Math.max(1, Math.floor(options.kselftestTimeoutSec ?? 120));
+  const kselftestTimeout =
+    options.kselftestTimeoutSec !== undefined
+      ? Math.max(0, Math.floor(options.kselftestTimeoutSec))
+      : undefined;
   const collections = options.collections ?? [];
   const runKselftestItems = options.items.filter((i) => i.runner === 'run_kselftest');
   const ftracetestItems = options.items.filter((i) => i.runner === 'ftracetest');
@@ -52,7 +59,9 @@ export function generateSelftestRunScript(options: RunScriptOptions): string {
     'mount -t tracefs nodev /sys/kernel/tracing 2>/dev/null || true',
     'export TMPDIR=/tmp',
     'export PATH="/bin:/sbin:/usr/bin:/usr/sbin:${PATH:-}"',
-    `export kselftest_override_timeout=${kselftestTimeout}`,
+    ...(kselftestTimeout !== undefined
+      ? [`export kselftest_override_timeout=${kselftestTimeout}`]
+      : []),
     '',
     `echo ${shellQuote(KDEV_SELFTEST_BEGIN)}`,
     'cd /mnt/host/kselftest || {',

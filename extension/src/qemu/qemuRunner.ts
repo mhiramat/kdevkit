@@ -15,10 +15,12 @@ export interface QemuRunOptions {
   scriptPath?: string;
   workspaceRoot: string;
   env?: NodeJS.ProcessEnv;
-  /** Overall run timeout in seconds (default 300). */
+  /** Overall run timeout in seconds (default 300). Set <= 0 to disable. */
   timeoutSec?: number;
   /** Boot-hang watchdog timeout in seconds (default 60). Set <= 0 to disable. */
   bootTimeoutSec?: number;
+  /** Inactivity watchdog after boot sentinel (seconds). Set <= 0 to disable. */
+  idleTimeoutSec?: number;
   /** Sentinel line that disarms the boot-hang watchdog (default "=== KDEV_SELFTEST_BEGIN ==="). */
   bootSentinel?: string;
   /** Optional path to shared/exit_code written by guest /init. */
@@ -37,6 +39,7 @@ export interface QemuRunResult {
   guestExitCode: number | null;
   timedOut: boolean;
   bootTimedOut: boolean;
+  idleTimedOut: boolean;
   cancelled: boolean;
   durationMs: number;
 }
@@ -107,6 +110,7 @@ export class QemuRunner {
       options.scriptPath ?? path.join(options.workspaceRoot, 'scripts', 'run_qemu.sh');
     const timeoutSec = options.timeoutSec ?? 300;
     const bootTimeoutSec = options.bootTimeoutSec ?? 60;
+    const idleTimeoutSec = options.idleTimeoutSec ?? 0;
     const bootSentinel = options.bootSentinel ?? '=== KDEV_SELFTEST_BEGIN ===';
     const killGraceMs = options.killGraceMs ?? 3000;
 
@@ -140,11 +144,13 @@ export class QemuRunner {
 
       let timedOut = false;
       let bootTimedOut = false;
+      let idleTimedOut = false;
       let bootSeen = false;
       let settled = false;
 
       let overallTimer: NodeJS.Timeout | null = null;
       let bootTimer: NodeJS.Timeout | null = null;
+      let idleTimer: NodeJS.Timeout | null = null;
 
       const clearTimers = () => {
         if (overallTimer) {
@@ -155,10 +161,29 @@ export class QemuRunner {
           clearTimeout(bootTimer);
           bootTimer = null;
         }
+        if (idleTimer) {
+          clearTimeout(idleTimer);
+          idleTimer = null;
+        }
         if (this.killEscalationTimer) {
           clearTimeout(this.killEscalationTimer);
           this.killEscalationTimer = null;
         }
+      };
+
+      const armIdleTimer = () => {
+        if (idleTimeoutSec <= 0) {
+          return;
+        }
+        if (idleTimer) {
+          clearTimeout(idleTimer);
+        }
+        idleTimer = setTimeout(() => {
+          if (this.activeChild === child) {
+            idleTimedOut = true;
+            this.terminateProcessGroup(child, killGraceMs);
+          }
+        }, idleTimeoutSec * 1000);
       };
 
       const onAbort = () => {
@@ -198,6 +223,9 @@ export class QemuRunner {
             clearTimeout(bootTimer);
             bootTimer = null;
           }
+        }
+        if (bootSeen) {
+          armIdleTimer();
         }
         options.onLine?.(line, stream);
       };
@@ -260,6 +288,7 @@ export class QemuRunner {
           guestExitCode,
           timedOut,
           bootTimedOut,
+          idleTimedOut,
           cancelled,
           durationMs: Date.now() - startedAt,
         });
