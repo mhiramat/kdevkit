@@ -12,7 +12,11 @@
   "activationEvents": [
     "onCommand:kdev.openKconfigEditor",
     "onCommand:kdev.restartKconfigBackend",
-    "onView:kdev.overview"
+    "onView:kdev.overview",
+    "onView:kdev.kprobe.probesView",
+    "onView:kdev.kprobe.eventsView",
+    "onLanguage:c",
+    "workspaceContains:build/current/shared/probes.json"
   ],
   "contributes": {
     "configuration": {
@@ -47,8 +51,50 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically restart clangd after applying Kconfig changes."
+        },
+        "kdev.perfBin": {
+          "type": "string",
+          "default": "perf",
+          "description": "Path or command name for the host perf binary."
+        },
+        "kdev.kprobe.traceGroup": {
+          "type": "string",
+          "default": "kdev",
+          "description": "Tracefs event group prefix (isolates kdevkit probes under events/<group>/)."
+        },
+        "kdev.kprobe.maxTraceEvents": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 100,
+          "description": "Maximum events retained in memory per trace.log load to protect UI responsiveness."
+        },
+        "kdev.kprobe.autoLoadTrace": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically reload trace.log when updated by QEMU."
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kdevExplorer",
+          "title": "kdevkit",
+          "icon": "$(pulse)"
+        }
+      ]
+    },
+    "views": {
+      "kdevExplorer": [
+        {
+          "id": "kdev.kprobe.probesView",
+          "name": "Configured Kprobes"
+        },
+        {
+          "id": "kdev.kprobe.eventsView",
+          "name": "Trace Events"
+        }
+      ]
     },
     "commands": [
       {
@@ -59,8 +105,140 @@
       {
         "command": "kdev.restartKconfigBackend",
         "title": "Kernel Dev: Restart Kconfig Backend"
+      },
+      {
+        "command": "kdev.kprobe.addAtCursor",
+        "title": "kdev: Add Kprobe at Cursor",
+        "icon": "$(add)"
+      },
+      {
+        "command": "kdev.kprobe.addReturnProbe",
+        "title": "kdev: Add Return Probe ($retval)",
+        "icon": "$(debug-step-out)"
+      },
+      {
+        "command": "kdev.kprobe.removeAtCursor",
+        "title": "kdev: Remove Kprobe at Cursor",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "kdev.kprobe.toggleProbe",
+        "title": "kdev: Toggle Kprobe Enabled",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "kdev.kprobe.editProbeVars",
+        "title": "kdev: Edit Kprobe Variables",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "kdev.kprobe.deleteProbe",
+        "title": "kdev: Delete Kprobe",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "kdev.kprobe.reResolveAll",
+        "title": "kdev: Re-resolve All Kprobes",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "kdev.kprobe.exportSetupScript",
+        "title": "kdev: Export Tracefs Setup Script",
+        "icon": "$(export)"
+      },
+      {
+        "command": "kdev.kprobe.loadTraceLog",
+        "title": "kdev: Load Trace Log",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "kdev.kprobe.filterEvents",
+        "title": "kdev: Filter Trace Events",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "kdev.kprobe.clearAll",
+        "title": "kdev: Clear All Kprobes",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "kdev.kprobe.jumpToEvent",
+        "title": "kdev: Jump to Probe/Event Line"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "kdev.kprobe.addAtCursor",
+          "when": "editorLangId == c",
+          "group": "kdev@1"
+        },
+        {
+          "command": "kdev.kprobe.addReturnProbe",
+          "when": "editorLangId == c",
+          "group": "kdev@2"
+        },
+        {
+          "command": "kdev.kprobe.removeAtCursor",
+          "when": "editorLangId == c",
+          "group": "kdev@3"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "kdev.kprobe.reResolveAll",
+          "when": "view == kdev.kprobe.probesView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kdev.kprobe.exportSetupScript",
+          "when": "view == kdev.kprobe.probesView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "kdev.kprobe.clearAll",
+          "when": "view == kdev.kprobe.probesView",
+          "group": "navigation@3"
+        },
+        {
+          "command": "kdev.kprobe.loadTraceLog",
+          "when": "view == kdev.kprobe.eventsView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kdev.kprobe.filterEvents",
+          "when": "view == kdev.kprobe.eventsView",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "kdev.kprobe.toggleProbe",
+          "when": "view == kdev.kprobe.probesView && viewItem =~ /^kprobe/",
+          "group": "inline@1"
+        },
+        {
+          "command": "kdev.kprobe.deleteProbe",
+          "when": "view == kdev.kprobe.probesView && viewItem =~ /^kprobe/",
+          "group": "inline@2"
+        },
+        {
+          "command": "kdev.kprobe.editProbeVars",
+          "when": "view == kdev.kprobe.probesView && viewItem =~ /^kprobe/",
+          "group": "1_modify@1"
+        },
+        {
+          "command": "kdev.kprobe.toggleProbe",
+          "when": "view == kdev.kprobe.probesView && viewItem =~ /^kprobe/",
+          "group": "1_modify@2"
+        },
+        {
+          "command": "kdev.kprobe.deleteProbe",
+          "when": "view == kdev.kprobe.probesView && viewItem =~ /^kprobe/",
+          "group": "1_modify@3"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node esbuild.mjs",

@@ -2,11 +2,13 @@ import * as vscode from 'vscode';
 import { KconfigFileWatcher } from './kconfig/configWatcher';
 import { KconfigPanelController } from './kconfig/panelController';
 import { KconfigRpcClient } from './kconfig/rpcClient';
+import { KprobeController } from './kprobe/kprobeController';
 import { resolveWorkspacePaths, WorkspaceConfigOverrides } from './shared/workspacePaths';
 
 export interface KdevExtensionApi {
   rpcClient: KconfigRpcClient;
   panelController: KconfigPanelController;
+  kprobeController: KprobeController;
   getLogs: () => string[];
 }
 
@@ -19,6 +21,10 @@ function readWorkspaceOverrides(): WorkspaceConfigOverrides {
     layersFile: cfg.get<string>('layersFile', ''),
     pythonPath: cfg.get<string>('pythonPath', 'backend/.venv/bin/python'),
     autoRestartClangd: cfg.get<boolean>('autoRestartClangd', true),
+    perfBin: cfg.get<string>('perfBin', 'perf'),
+    traceGroup: cfg.get<string>('kprobe.traceGroup', 'kdev'),
+    maxTraceEvents: cfg.get<number>('kprobe.maxTraceEvents', 10000),
+    autoLoadTrace: cfg.get<boolean>('kprobe.autoLoadTrace', true),
   };
 }
 
@@ -94,9 +100,24 @@ export function activate(context: vscode.ExtensionContext): KdevExtensionApi | u
     )
   );
 
+  const kprobeController = new KprobeController({
+    paths,
+    logger,
+  });
+  context.subscriptions.push(
+    kprobeController,
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('kdev')) {
+        const updatedPaths = resolveWorkspacePaths(workspaceRoot, readWorkspaceOverrides());
+        kprobeController.updatePaths(updatedPaths);
+      }
+    })
+  );
+
   return {
     rpcClient,
     panelController,
+    kprobeController,
     getLogs: () => [...logHistory],
   };
 }

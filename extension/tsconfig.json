@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "module": "CommonJS",
+    "module": "ESNext",
     "target": "ES2022",
     "lib": ["ES2022"],
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "rootDir": ".",
     "outDir": "dist",
     "strict": true,
@@ -18,6 +18,9 @@
     "src/**/*.ts",
     "test/unit/rpcClient.test.ts",
     "test/unit/layerInjection.test.ts",
+    "test/unit/perfProbe.test.ts",
+    "test/unit/traceParser.test.ts",
+    "test/unit/probeStore.test.ts",
     "test/integration/**/*.ts",
     "test/e2e/**/*.ts"
   ],
