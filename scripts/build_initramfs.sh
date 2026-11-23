@@ -29,6 +29,7 @@ mkdir -p \
   "${ROOTFS_DIR}/bin" \
   "${ROOTFS_DIR}/sbin" \
   "${ROOTFS_DIR}/etc" \
+  "${ROOTFS_DIR}/root" \
   "${ROOTFS_DIR}/proc" \
   "${ROOTFS_DIR}/sys" \
   "${ROOTFS_DIR}/dev" \
@@ -40,6 +41,25 @@ mkdir -p \
   "${ROOTFS_DIR}/mnt/host" \
   "${ROOTFS_DIR}/lib/modules" \
   "${ROOTFS_DIR}/lib64"
+
+cat << 'EOF' > "${ROOTFS_DIR}/etc/passwd"
+root:x:0:0:root:/root:/bin/sh
+daemon:x:1:1:daemon:/usr/sbin:/bin/false
+bin:x:2:2:bin:/bin:/bin/false
+sys:x:3:3:sys:/dev:/bin/false
+nobody:x:65534:65534:nobody:/nonexistent:/bin/false
+EOF
+
+cat << 'EOF' > "${ROOTFS_DIR}/etc/group"
+root:x:0:
+daemon:x:1:
+bin:x:2:
+sys:x:3:
+adm:x:4:
+tty:x:5:
+disk:x:6:
+nogroup:x:65534:
+EOF
 
 echo "==> [2/4] Installing static BusyBox (${BUSYBOX_BIN}) and kernel modules"
 cp "${BUSYBOX_BIN}" "${ROOTFS_DIR}/bin/busybox"
