@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   checkTargetConfig,
   discoverTargetTests,
+  filterSolvableRequests,
   listAvailableTargets,
   parseKconfigFile,
   parseKselftestList,
@@ -153,5 +154,29 @@ TEST_PROGS_EXTENDED = ftracetest # trailing comment
       ['OPTPROBES', 'y', 'n'],
       ['SAMPLE_TRACE_EVENTS', 'm', 'y'],
     ]);
+  });
+
+  it('filters unknown and non-tristate symbols before calling SAT solver', async () => {
+    const symbolTable: Record<string, { type: string }> = {
+      FTRACE: { type: 'bool' },
+      SAMPLE_TRACE_EVENTS: { type: 'tristate' },
+      LOG_BUF_SHIFT: { type: 'int' },
+    };
+
+    const result = await filterSolvableRequests(
+      [
+        { symbol: 'RESERVE_MEM', required: 'y', current: 'n', sourceFile: 'config' },
+        { symbol: 'FTRACE', required: 'm', current: 'n', sourceFile: 'config' },
+        { symbol: 'SAMPLE_TRACE_EVENTS', required: 'm', current: 'n', sourceFile: 'config' },
+        { symbol: 'LOG_BUF_SHIFT', required: '18', current: '17', sourceFile: 'config' },
+      ],
+      async (sym) => symbolTable[sym] ?? null
+    );
+
+    expect(result.requests).toEqual([
+      { symbol: 'FTRACE', value: 'y' },
+      { symbol: 'SAMPLE_TRACE_EVENTS', value: 'm' },
+    ]);
+    expect(result.skipped.map((s) => s.symbol)).toEqual(['RESERVE_MEM', 'LOG_BUF_SHIFT']);
   });
 });

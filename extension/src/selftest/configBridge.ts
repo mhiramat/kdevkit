@@ -5,7 +5,7 @@ import { KconfigPanelController } from '../kconfig/panelController';
 import { KconfigRpcClient } from '../kconfig/rpcClient';
 import { ConfigLayer } from '../shared/protocol';
 import { ResolvedWorkspacePaths } from '../shared/workspacePaths';
-import { checkTargetConfig } from './discovery';
+import { checkTargetConfig, filterSolvableRequests } from './discovery';
 import { ConfigCheckResult } from './types';
 
 function sanitizeLayerId(target: string, archSuffix?: string): string {
@@ -156,10 +156,37 @@ export async function syncSelftestTargetConfig(options: {
     runConfigure: false,
   });
 
-  const requests = check.missing.map((m) => ({
-    symbol: m.symbol,
-    value: m.required,
-  }));
+  const { requests, skipped } = await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: `Validating ${check.missing.length} Kconfig symbol(s) for selftest '${target}'...`,
+    },
+    () =>
+      filterSolvableRequests(check.missing, async (symbol) => {
+        try {
+          return await rpcClient.getSymbolDetail(symbol);
+        } catch {
+          return null;
+        }
+      })
+  );
+
+  if (skipped.length > 0) {
+    for (const s of skipped) {
+      logger(`[selftest] Skipping ${s.symbol}=${s.required}: ${s.reason}`);
+    }
+    const skippedNames = skipped.map((s) => s.symbol).join(', ');
+    void vscode.window.showWarningMessage(
+      `Skipped ${skipped.length} unknown/unsupported Kconfig symbol(s) from '${target}' config: ${skippedNames}`
+    );
+  }
+
+  if (requests.length === 0) {
+    void vscode.window.showInformationMessage(
+      `No solvable Kconfig changes remain for selftest '${target}'.`
+    );
+    return check;
+  }
 
   const solveResponse = await vscode.window.withProgress(
     {

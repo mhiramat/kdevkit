@@ -346,3 +346,73 @@ export function checkTargetConfig(options: {
     configPaths,
   };
 }
+
+export interface SkippedConfigRequirement {
+  symbol: string;
+  required: string;
+  reason: string;
+}
+
+export interface SolvableFilterResult {
+  requests: Array<{ symbol: string; value: string }>;
+  skipped: SkippedConfigRequirement[];
+}
+
+/**
+ * Filter missing selftest config requirements against the active kernel's Kconfig
+ * symbol table so obsolete, renamed, arch-specific, or non-tristate symbols (such as
+ * `RESERVE_MEM` in `selftests/ftrace/config`) are skipped with diagnostics instead
+ * of aborting the SAT solver.
+ */
+export async function filterSolvableRequests(
+  missing: ConfigRequirement[],
+  lookupSymbol: (symbol: string) => Promise<{ type: string } | null>
+): Promise<SolvableFilterResult> {
+  const requests: Array<{ symbol: string; value: string }> = [];
+  const skipped: SkippedConfigRequirement[] = [];
+
+  for (const req of missing) {
+    let detail: { type: string } | null = null;
+    try {
+      detail = await lookupSymbol(req.symbol);
+    } catch {
+      detail = null;
+    }
+
+    if (!detail) {
+      skipped.push({
+        symbol: req.symbol,
+        required: req.required,
+        reason: 'unknown symbol in current kernel Kconfig',
+      });
+      continue;
+    }
+
+    if (detail.type !== 'bool' && detail.type !== 'tristate') {
+      skipped.push({
+        symbol: req.symbol,
+        required: req.required,
+        reason: `unsupported symbol type '${detail.type}' for SAT solver`,
+      });
+      continue;
+    }
+
+    let value = req.required;
+    if (detail.type === 'bool' && value === 'm') {
+      value = 'y';
+    }
+
+    if (value !== 'y' && value !== 'm' && value !== 'n') {
+      skipped.push({
+        symbol: req.symbol,
+        required: req.required,
+        reason: `invalid tristate value '${req.required}'`,
+      });
+      continue;
+    }
+
+    requests.push({ symbol: req.symbol, value });
+  }
+
+  return { requests, skipped };
+}
