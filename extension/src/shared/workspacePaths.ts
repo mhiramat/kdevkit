@@ -12,6 +12,18 @@ export interface WorkspaceConfigOverrides {
   traceGroup?: string;
   maxTraceEvents?: number;
   autoLoadTrace?: boolean;
+  gitTopicPrefix?: string;
+  gitReviewPrefix?: string;
+  gitMaintainerPrefixes?: string[];
+  gitFixesSuffixes?: string[];
+  gitNextSuffixes?: string[];
+  gitStateDir?: string;
+  gitB4Bin?: string;
+  gitImportSource?: 'undined-mcp' | 'b4';
+  gitPrSkillCommand?: string;
+  undinedBin?: string;
+  undinedConfigPath?: string;
+  undinedWebBaseUrl?: string;
 }
 
 export interface ResolvedWorkspacePaths {
@@ -34,6 +46,19 @@ export interface ResolvedWorkspacePaths {
   traceGroup: string;
   maxTraceEvents: number;
   autoLoadTrace: boolean;
+  gitStateDir: string;
+  prContextPath: string;
+  gitTopicPrefix: string;
+  gitReviewPrefix: string;
+  gitMaintainerPrefixes: string[];
+  gitFixesSuffixes: string[];
+  gitNextSuffixes: string[];
+  gitB4Bin: string;
+  gitImportSource: 'undined-mcp' | 'b4';
+  gitPrSkillCommand: string;
+  undinedBin: string;
+  undinedConfigPath: string;
+  undinedWebBaseUrl: string;
 }
 
 function resolveMaybeRelative(baseDir: string, target: string): string {
@@ -81,6 +106,25 @@ export function resolveWorkspacePaths(
       ? resolveMaybeRelative(wsRoot, configuredPerf)
       : configuredPerf;
 
+  const gitStateDir = resolveMaybeRelative(wsRoot, overrides.gitStateDir || '.kdev/series');
+  const prContextPath = path.join(wsRoot, '.kdev', 'pr-context.json');
+
+  const configuredB4 = overrides.gitB4Bin || 'b4';
+  const gitB4Bin =
+    configuredB4.includes('/') || configuredB4.includes(path.sep)
+      ? resolveMaybeRelative(wsRoot, configuredB4)
+      : configuredB4;
+
+  const configuredUndined = overrides.undinedBin || 'undined';
+  const undinedBin =
+    configuredUndined.includes('/') || configuredUndined.includes(path.sep)
+      ? resolveMaybeRelative(wsRoot, configuredUndined)
+      : configuredUndined;
+
+  const undinedConfigPath = overrides.undinedConfigPath
+    ? resolveMaybeRelative(wsRoot, overrides.undinedConfigPath)
+    : '';
+
   return {
     workspaceRoot: wsRoot,
     kernelDir,
@@ -101,5 +145,18 @@ export function resolveWorkspacePaths(
     traceGroup: overrides.traceGroup || 'kdev',
     maxTraceEvents: overrides.maxTraceEvents ?? 10000,
     autoLoadTrace: overrides.autoLoadTrace ?? true,
+    gitStateDir,
+    prContextPath,
+    gitTopicPrefix: overrides.gitTopicPrefix || 'topic/',
+    gitReviewPrefix: overrides.gitReviewPrefix || 'review/',
+    gitMaintainerPrefixes: overrides.gitMaintainerPrefixes ?? [],
+    gitFixesSuffixes: overrides.gitFixesSuffixes ?? ['fixes', 'urgent'],
+    gitNextSuffixes: overrides.gitNextSuffixes ?? ['for-next', 'next', 'core'],
+    gitB4Bin,
+    gitImportSource: overrides.gitImportSource ?? 'undined-mcp',
+    gitPrSkillCommand: overrides.gitPrSkillCommand ?? '',
+    undinedBin,
+    undinedConfigPath,
+    undinedWebBaseUrl: overrides.undinedWebBaseUrl || 'http://127.0.0.1:8080',
   };
 }

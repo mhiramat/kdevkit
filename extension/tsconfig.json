@@ -26,6 +26,9 @@
     "test/unit/scriptGenerator.test.ts",
     "test/unit/qemuRunner.test.ts",
     "test/unit/traceAnalytics.test.ts",
+    "test/unit/seriesStore.test.ts",
+    "test/unit/preflight.test.ts",
+    "test/unit/mcpClient.test.ts",
     "test/integration/**/*.ts",
     "test/e2e/**/*.ts"
   ],

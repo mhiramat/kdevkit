@@ -4,6 +4,7 @@ import { KconfigPanelController } from './kconfig/panelController';
 import { KconfigRpcClient } from './kconfig/rpcClient';
 import { KprobeController } from './kprobe/kprobeController';
 import { TracePlotController } from './kprobe/tracePlotController';
+import { PatchStackController } from './patchstack/patchstackController';
 import { QemuRunner } from './qemu/qemuRunner';
 import { SelftestController } from './selftest/selftestController';
 import { resolveWorkspacePaths, WorkspaceConfigOverrides } from './shared/workspacePaths';
@@ -14,6 +15,7 @@ export interface KdevExtensionApi {
   kprobeController: KprobeController;
   tracePlotController: TracePlotController;
   selftestController: SelftestController;
+  patchStackController: PatchStackController;
   qemuRunner: QemuRunner;
   getLogs: () => string[];
 }
@@ -31,6 +33,18 @@ function readWorkspaceOverrides(): WorkspaceConfigOverrides {
     traceGroup: cfg.get<string>('kprobe.traceGroup', 'kdev'),
     maxTraceEvents: cfg.get<number>('kprobe.maxTraceEvents', 10000),
     autoLoadTrace: cfg.get<boolean>('kprobe.autoLoadTrace', true),
+    gitTopicPrefix: cfg.get<string>('git.topicPrefix', 'topic/'),
+    gitReviewPrefix: cfg.get<string>('git.reviewPrefix', 'review/'),
+    gitMaintainerPrefixes: cfg.get<string[]>('git.maintainerPrefixes', []),
+    gitFixesSuffixes: cfg.get<string[]>('git.fixesSuffixes', ['fixes', 'urgent']),
+    gitNextSuffixes: cfg.get<string[]>('git.nextSuffixes', ['for-next', 'next', 'core']),
+    gitStateDir: cfg.get<string>('git.stateDir', '.kdev/series'),
+    gitB4Bin: cfg.get<string>('git.b4Bin', 'b4'),
+    gitImportSource: cfg.get<'undined-mcp' | 'b4'>('git.importSource', 'undined-mcp'),
+    gitPrSkillCommand: cfg.get<string>('git.prSkillCommand', ''),
+    undinedBin: cfg.get<string>('undined.bin', 'undined'),
+    undinedConfigPath: cfg.get<string>('undined.configPath', ''),
+    undinedWebBaseUrl: cfg.get<string>('undined.webBaseUrl', 'http://127.0.0.1:8080'),
   };
 }
 
@@ -129,10 +143,16 @@ export function activate(context: vscode.ExtensionContext): KdevExtensionApi | u
     onTraceCaptured: () => tracePlotController.openOrReveal(),
   });
 
+  const patchStackController = new PatchStackController({
+    paths,
+    logger,
+  });
+
   context.subscriptions.push(
     kprobeController,
     tracePlotController,
     selftestController,
+    patchStackController,
     vscode.commands.registerCommand('kdev.kprobe.openTracePlot', () => {
       tracePlotController.openOrReveal();
     }),
@@ -141,6 +161,7 @@ export function activate(context: vscode.ExtensionContext): KdevExtensionApi | u
         const updatedPaths = resolveWorkspacePaths(workspaceRoot, readWorkspaceOverrides());
         kprobeController.updatePaths(updatedPaths);
         selftestController.updatePaths(updatedPaths);
+        patchStackController.updatePaths(updatedPaths);
       }
     })
   );
@@ -151,6 +172,7 @@ export function activate(context: vscode.ExtensionContext): KdevExtensionApi | u
     kprobeController,
     tracePlotController,
     selftestController,
+    patchStackController,
     qemuRunner,
     getLogs: () => [...logHistory],
   };

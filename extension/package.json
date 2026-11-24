@@ -19,6 +19,8 @@
     "onView:kdev.overview",
     "onView:kdev.kprobe.probesView",
     "onView:kdev.kprobe.eventsView",
+    "onView:kdev.git.branchesView",
+    "onView:kdev.git.stackView",
     "onView:workbench.view.testing",
     "onLanguage:c",
     "workspaceContains:build/current/shared/probes.json"
@@ -160,6 +162,86 @@
           "type": "boolean",
           "default": false,
           "description": "Automatically open the Trace Plotter panel after a 'Run in QEMU with Active Kprobes' selftest finishes."
+        },
+        "kdev.git.topicPrefix": {
+          "type": "string",
+          "default": "topic/",
+          "description": "Branch prefix identifying developer topic patch-series branches."
+        },
+        "kdev.git.reviewPrefix": {
+          "type": "string",
+          "default": "review/",
+          "description": "Branch prefix identifying incoming patch review branches."
+        },
+        "kdev.git.maintainerPrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "User-defined branch prefixes or exact/glob names for subsystem maintainer queues (e.g., [\"probes/\", \"bootconfig/\"])."
+        },
+        "kdev.git.fixesSuffixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "fixes",
+            "urgent"
+          ],
+          "description": "Branch suffixes classified under the weekly fixes PR cadence."
+        },
+        "kdev.git.nextSuffixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "for-next",
+            "next",
+            "core"
+          ],
+          "description": "Branch suffixes classified under the merge-window for-next PR cadence."
+        },
+        "kdev.git.stateDir": {
+          "type": "string",
+          "default": ".kdev/series",
+          "description": "Durable metadata directory relative to workspace root (outside linux/ and build/)."
+        },
+        "kdev.git.b4Bin": {
+          "type": "string",
+          "default": "b4",
+          "description": "Path or command name for the b4 executable."
+        },
+        "kdev.git.importSource": {
+          "type": "string",
+          "enum": [
+            "undined-mcp",
+            "b4"
+          ],
+          "default": "undined-mcp",
+          "description": "Default mbox source when importing review branches ('undined-mcp' or 'b4')."
+        },
+        "kdev.git.prSkillCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Command template to invoke your existing Pull Request skill ({branch}, {contextFile}, {kernelDir})."
+        },
+        "kdev.undined.bin": {
+          "type": "string",
+          "default": "undined",
+          "description": "Path or command name for the undined binary used for MCP STDIO (--mcp-stdio)."
+        },
+        "kdev.undined.configPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional --config path passed to undined."
+        },
+        "kdev.undined.webBaseUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:8080",
+          "description": "UndineD Web UI base URL for 'Open in UndineD' links."
         }
       }
     },
@@ -174,6 +256,14 @@
     },
     "views": {
       "kdevExplorer": [
+        {
+          "id": "kdev.git.branchesView",
+          "name": "Kernel Branches"
+        },
+        {
+          "id": "kdev.git.stackView",
+          "name": "Patch Stack"
+        },
         {
           "id": "kdev.kprobe.probesView",
           "name": "Configured Kprobes"
@@ -272,6 +362,131 @@
         "command": "kdev.selftest.buildSelected",
         "title": "kdev: Build Selected Selftests",
         "icon": "$(tools)"
+      },
+      {
+        "command": "kdev.git.refreshViews",
+        "title": "kdev: Refresh Patch Stack & Branches",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "kdev.git.newTopicBranch",
+        "title": "kdev: New Topic Branch",
+        "icon": "$(git-branch-create)"
+      },
+      {
+        "command": "kdev.git.checkoutBranch",
+        "title": "kdev: Checkout Branch",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "kdev.git.setBranchRole",
+        "title": "kdev: Set Branch Role",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "kdev.git.configureMaintainerBranches",
+        "title": "kdev: Configure Maintainer Branches...",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "kdev.git.refreshCommit",
+        "title": "kdev: Refresh Changes into Commit",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "kdev.git.rewordCommit",
+        "title": "kdev: Edit Commit Message (Reword)",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "kdev.git.moveCommitUp",
+        "title": "kdev: Move Commit Up",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "kdev.git.moveCommitDown",
+        "title": "kdev: Move Commit Down",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "kdev.git.dropCommit",
+        "title": "kdev: Drop Commit",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "kdev.git.movePatchesToBranch",
+        "title": "kdev: Move Commit(s) to Another Branch...",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "kdev.git.undoStack",
+        "title": "kdev: Undo Stack Operation",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "kdev.git.popCommit",
+        "title": "kdev: Pop Top Commit from Stack",
+        "icon": "$(fold-down)"
+      },
+      {
+        "command": "kdev.git.pushCommit",
+        "title": "kdev: Push Popped Commit onto Stack",
+        "icon": "$(fold-up)"
+      },
+      {
+        "command": "kdev.git.continueConflict",
+        "title": "kdev: Continue Rebase / Apply",
+        "icon": "$(play)"
+      },
+      {
+        "command": "kdev.git.skipConflict",
+        "title": "kdev: Skip Conflicting Patch",
+        "icon": "$(debug-step-over)"
+      },
+      {
+        "command": "kdev.git.abortConflict",
+        "title": "kdev: Abort Rebase / Apply",
+        "icon": "$(stop-circle)"
+      },
+      {
+        "command": "kdev.git.editCoverLetter",
+        "title": "kdev: Edit Series Cover Letter",
+        "icon": "$(mail)"
+      },
+      {
+        "command": "kdev.git.bumpSeriesVersion",
+        "title": "kdev: Bump Series Version (range-diff)",
+        "icon": "$(versions)"
+      },
+      {
+        "command": "kdev.git.runPreflight",
+        "title": "kdev: Run Series Preflight (checkpatch & maintainers)",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "kdev.git.stageSeriesToUndineD",
+        "title": "kdev: Stage Patch Series to UndineD Drafts",
+        "icon": "$(send)"
+      },
+      {
+        "command": "kdev.git.importReviewBranch",
+        "title": "kdev: Import Review Branch by Message-ID",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "kdev.git.applyToMaintainerBranch",
+        "title": "kdev: Apply Patch to Maintainer Branch (b4 -l -s)",
+        "icon": "$(inbox)"
+      },
+      {
+        "command": "kdev.git.preparePullRequestContext",
+        "title": "kdev: Prepare Pull Request Context",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "kdev.git.runPullRequestSkill",
+        "title": "kdev: Run Pull Request Skill",
+        "icon": "$(git-pull-request)"
       }
     ],
     "menus": {
@@ -332,6 +547,56 @@
           "command": "kdev.selftest.buildSelected",
           "when": "view == workbench.view.testing",
           "group": "navigation@11"
+        },
+        {
+          "command": "kdev.git.newTopicBranch",
+          "when": "view == kdev.git.branchesView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kdev.git.importReviewBranch",
+          "when": "view == kdev.git.branchesView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "kdev.git.refreshViews",
+          "when": "view == kdev.git.branchesView",
+          "group": "navigation@3"
+        },
+        {
+          "command": "kdev.git.undoStack",
+          "when": "view == kdev.git.stackView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kdev.git.editCoverLetter",
+          "when": "view == kdev.git.stackView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "kdev.git.bumpSeriesVersion",
+          "when": "view == kdev.git.stackView",
+          "group": "navigation@3"
+        },
+        {
+          "command": "kdev.git.runPreflight",
+          "when": "view == kdev.git.stackView",
+          "group": "navigation@4"
+        },
+        {
+          "command": "kdev.git.stageSeriesToUndineD",
+          "when": "view == kdev.git.stackView",
+          "group": "navigation@5"
+        },
+        {
+          "command": "kdev.git.applyToMaintainerBranch",
+          "when": "view == kdev.git.stackView",
+          "group": "navigation@6"
+        },
+        {
+          "command": "kdev.git.runPullRequestSkill",
+          "when": "view == kdev.git.stackView",
+          "group": "navigation@7"
         }
       ],
       "testing/item/context": [
@@ -381,6 +646,51 @@
           "command": "kdev.kprobe.deleteProbe",
           "when": "view == kdev.kprobe.probesView && viewItem =~ /^kprobe/",
           "group": "1_modify@3"
+        },
+        {
+          "command": "kdev.git.checkoutBranch",
+          "when": "view == kdev.git.branchesView && viewItem =~ /^branch/",
+          "group": "inline@1"
+        },
+        {
+          "command": "kdev.git.setBranchRole",
+          "when": "view == kdev.git.branchesView && viewItem =~ /^branch/",
+          "group": "1_branch@1"
+        },
+        {
+          "command": "kdev.git.runPullRequestSkill",
+          "when": "view == kdev.git.branchesView && viewItem == branchMaintainer",
+          "group": "1_branch@2"
+        },
+        {
+          "command": "kdev.git.refreshCommit",
+          "when": "view == kdev.git.stackView && viewItem =~ /^stackCommit/",
+          "group": "inline@1"
+        },
+        {
+          "command": "kdev.git.moveCommitUp",
+          "when": "view == kdev.git.stackView && viewItem == stackCommitEditable",
+          "group": "inline@2"
+        },
+        {
+          "command": "kdev.git.moveCommitDown",
+          "when": "view == kdev.git.stackView && viewItem == stackCommitEditable",
+          "group": "inline@3"
+        },
+        {
+          "command": "kdev.git.rewordCommit",
+          "when": "view == kdev.git.stackView && viewItem =~ /^stackCommit/",
+          "group": "1_edit@1"
+        },
+        {
+          "command": "kdev.git.dropCommit",
+          "when": "view == kdev.git.stackView && viewItem =~ /^stackCommit/",
+          "group": "1_edit@2"
+        },
+        {
+          "command": "kdev.git.movePatchesToBranch",
+          "when": "view == kdev.git.stackView && viewItem == stackCommitEditable",
+          "group": "1_edit@3"
         }
       ]
     }
