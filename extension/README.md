@@ -4,6 +4,7 @@ Unified VSCode extension for the `kdevkit` parent workspace. It provides:
 
 1. **Kconfig SAT-Solver Editor**: Interactive dependency resolution, pinned layer protection, and automatic `clangd` `#ifdef CONFIG_*` refresh.
 2. **Editor-Driven Kprobes & Tracefs Visualization**: Offline host-side `perf probe` DWARF analysis, automatic QEMU Tracefs script generation, and watchpoint-style trace inspection directly inside C kernel sources.
+3. **StGit-Free Patch Stack, Series & Maintainer Workflow**: Pure-Git commit stack editing (`refresh`, `reorder`, `drop`, `reword`, `pop`/`push`, 1-click `undo`), role-based branch management (`topic/*`, `review/*`, customizable maintainer queues), preflight (`checkpatch.pl`, `get_maintainer.pl`), and draft-only UndineD MCP staging (`stage_patch_series`).
 
 ---
 
@@ -12,6 +13,7 @@ Unified VSCode extension for the `kdevkit` parent workspace. It provides:
 * **Parent Workspace**: Open the `kdevkit/` root directory (not `linux/` directly) in VSCode.
 * **Built Kernel with DWARF & Tracing**: `build/current/vmlinux` built with `CONFIG_DEBUG_INFO_REDUCED=n`, `CONFIG_KPROBES=y`, `CONFIG_KPROBE_EVENTS=y`, and `CONFIG_FTRACE=y` (configured automatically by `./setup.sh --configure` + `./scripts/build_kernel.sh`).
 * **Host `perf` Binary**: `perf` compiled with DWARF (`libdw`/`libelf`) support. If `/usr/bin/perf` is a kernel-version-locked wrapper, set `kdev.perfBin` to `/usr/lib/linux-tools-<ver>/perf` or a locally built `tools/perf/perf`.
+* **Git >= 2.38, `b4`, and `undined` (Optional for Phase 4)**: Required for patch-stack operations, lore Message-ID imports (`b4 am`), and staging patch series drafts into UndineD via MCP STDIO (`undined --mcp-stdio`).
 
 ---
 
@@ -87,6 +89,40 @@ Open the Command Palette (`Ctrl+Shift+P`) and run:
 
 ---
 
+## Using the Patch Stack, Series & Maintainer Workflow
+
+Open the **kdevkit** Activity Bar (`$(pulse)` icon) to access **`Kernel Branches`** (`kdev.git.branchesView`) and **`Patch Stack`** (`kdev.git.stackView`). All durable series metadata (`series.json`, `cover.md`) is stored under `.kdev/series/` outside `linux/` and `build/`.
+
+### 1. Branch Roles & Maintainer Queues
+
+* **Topics (`topic/*`)**: Create via **`kdev: New Topic Branch`** (`kdev.git.newTopicBranch`).
+* **Reviews (`review/*`)**: Import incoming lore threads by Message-ID or URL via **`kdev: Import Review Branch by Message-ID`** (`kdev.git.importReviewBranch`) using UndineD MCP (`export_thread_mbox`) or `b4 am`.
+* **Maintainer Branches**: Configure `kdev.git.maintainerPrefixes` (e.g., `["probes/", "bootconfig/"]` or flat names like `"for-next"`) via **`kdev: Configure Maintainer Branches...`** or tag individual branches via **`kdev: Set Branch Role`**. Suffixes matching `kdev.git.fixesSuffixes` / `kdev.git.nextSuffixes` automatically show `fixes` / `for-next` cadence badges.
+
+### 2. Pure-Git Stack Editing (`StGit` Equivalent)
+
+In **`Patch Stack`** (commits from `base..HEAD`, top-of-stack at top):
+
+* **Refresh into arbitrary commit**: Edit files in `linux/`, then click **`Refresh Changes into Commit`** on any commit (`--amend` on HEAD, or `--fixup` + `git rebase -i --autosquash --autostash` on lower commits).
+* **Reorder / Reword / Drop / Pop / Push**: Use inline or context-menu actions (`Move Up`, `Move Down`, `Edit Commit Message`, `Drop Commit`, `Pop`/`Push`).
+* **1-Click Undo**: Every stack mutation saves a `refs/kdev/undo/<branch>/<seq>` snapshot; run **`kdev: Undo Stack Operation`** to restore the exact prior `HEAD`.
+* **Conflict Controls**: When a rebase or `git am` hits a conflict, the Stack View displays **Continue**, **Skip**, and **Abort** actions.
+* **Published-Commit Guard & Cross-Branch Move**: Commits reachable from `branch.<name>.kdev-upstream-ref` show a `$(lock)` badge and require explicit override confirmation before rewriting. Unpublished commits can be moved transactionally to another branch via **`kdev: Move Commit(s) to Another Branch...`**.
+
+### 3. Topic Series Preflight & Draft Staging to UndineD
+
+* **`kdev: Edit Series Cover Letter`**: Opens `.kdev/series/<slug>/cover.md` in VSCode.
+* **`kdev: Bump Series Version (range-diff)`**: Increments `vN -> vN+1` and offers to append `git range-diff` against the previous staged snapshot (`refs/kdev/staged/<slug>/vN`).
+* **`kdev: Run Series Preflight`**: Runs `scripts/get_maintainer.pl`, `scripts/checkpatch.pl --strict`, and `Signed-off-by:` checks (populating the Problems panel).
+* **`kdev: Stage Patch Series to UndineD Drafts`**: Formats patches with `--base`, merges `cover.md`, confirms `To`/`Cc`, and calls UndineD MCP `stage_patch_series` (strictly **Draft-Only**; never invokes `git send-email` or SMTP). Review and send manually from the UndineD Web UI.
+
+### 4. Maintainer Ingestion & Pull Request Skill Integration
+
+* **`kdev: Apply Patch to Maintainer Branch (b4 -l -s)`**: Fetches via `b4 am -l -s`, creates an Undo snapshot, applies via `git am -3`, and offers 1-click Patchwork status update (`update_patchwork_patch`).
+* **`kdev: Prepare Pull Request Context`** / **`kdev: Run Pull Request Skill`**: Exports `.kdev/pr-context.json` (cadence, base/head SHAs, signed tags, `git ls-remote` push status, shortlog, diffstat) and launches your configured `kdev.git.prSkillCommand` (or copies the prompt + context path to the clipboard).
+
+---
+
 ## Configuration Reference
 
 | Setting | Default | Description |
@@ -100,6 +136,18 @@ Open the Command Palette (`Ctrl+Shift+P`) and run:
 | `kdev.kprobe.autoLoadTrace` | `true` | Automatically reload `trace.log` when updated by QEMU. |
 | `kdev.pythonPath` | `"backend/.venv/bin/python"` | Python interpreter for the Kconfig backend. |
 | `kdev.autoRestartClangd` | `true` | Restart `clangd` automatically after applying Kconfig changes. |
+| `kdev.git.topicPrefix` | `"topic/"` | Branch prefix for developer topic series. |
+| `kdev.git.reviewPrefix` | `"review/"` | Branch prefix for incoming patch reviews. |
+| `kdev.git.maintainerPrefixes` | `[]` | User-defined maintainer branch prefixes or names (e.g. `["probes/", "bootconfig/"]`). |
+| `kdev.git.fixesSuffixes` | `["fixes", "urgent"]` | Branch suffixes classified under weekly `fixes` PR cadence. |
+| `kdev.git.nextSuffixes` | `["for-next", "next", "core"]` | Branch suffixes classified under merge-window `for-next` PR cadence. |
+| `kdev.git.stateDir` | `".kdev/series"` | Durable series metadata directory (relative to workspace root). |
+| `kdev.git.b4Bin` | `"b4"` | Path or command name for `b4`. |
+| `kdev.git.importSource` | `"undined-mcp"` | Default mbox source for review imports (`"undined-mcp"` or `"b4"`). |
+| `kdev.git.prSkillCommand` | `""` | Command template to launch your existing PR skill (`{branch}`, `{contextFile}`, `{kernelDir}`). |
+| `kdev.undined.bin` | `"undined"` | Path or command name for `undined` (`--mcp-stdio`). |
+| `kdev.undined.configPath` | `""` | Optional `--config` path passed to `undined`. |
+| `kdev.undined.webBaseUrl` | `"http://127.0.0.1:8080"` | UndineD Web UI base URL for "Open in UndineD" links. |
 
 ---
 
@@ -111,4 +159,5 @@ npm run typecheck
 npm run build
 npm run test:unit
 npx vitest run test/integration/perfVmlinux.test.ts
+npx vitest run test/integration/gitStackEngine.test.ts test/integration/undinedMcp.test.ts
 ```
