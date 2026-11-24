@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Generate a Linus Torvalds Pull Request cover letter, Cc list, shortlog,
+# diffstat, and diff from a signed Git tag.
+#
+# Usage:
+#   make-linus-pull [OPTIONS] <tag> [from-sha]
+#
+# Options:
+#   -C <dir>          Git repository directory (default: ./linux if present, else .)
+#   --from <ref>      Base ref or commit SHA (default: origin/master or 2nd positional arg)
+#   --repo <url>      Public pull repository URL
+#   --who <name>      Greeting recipient name (default: Linus)
+#   --cc-extra <list> Extra comma-separated Cc recipients appended to patch authors
+#   --out <file>      Output file path (default: /tmp/prog-<tag>)
+#   -h, --help        Show this help message
+
+GIT_DIR_ARG=""
+FROM_SHA=""
+REPO_URL=""
+WHO="Linus"
+CC_EXTRA="Steven Rostedt <rostedt@goodmis.org>, Masami Hiramatsu <mhiramat@kernel.org>, linux-kernel@vger.kernel.org"
+PROLOG=""
+POSITIONAL=()
+
+usage() {
+  sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -C)
+      GIT_DIR_ARG="$2"
+      shift 2
+      ;;
+    --from)
+      FROM_SHA="$2"
+      shift 2
+      ;;
+    --repo)
+      REPO_URL="$2"
+      shift 2
+      ;;
+    --who)
+      WHO="$2"
+      shift 2
+      ;;
+    --cc-extra)
+      CC_EXTRA="$2"
+      shift 2
+      ;;
+    --out)
+      PROLOG="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      while [ $# -gt 0 ]; do
+        POSITIONAL+=("$1")
+        shift
+      done
+      ;;
+    -*)
+      echo "Error: Unknown option '$1'" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ "${#POSITIONAL[@]}" -lt 1 ]; then
+  usage >&2
+  exit 1
+fi
+
+TAG="${POSITIONAL[0]}"
+if [ -z "${FROM_SHA}" ]; then
+  if [ "${#POSITIONAL[@]}" -ge 2 ]; then
+    FROM_SHA="${POSITIONAL[1]}"
+  else
+    FROM_SHA="origin/master"
+  fi
+fi
+
+if [ -z "${GIT_DIR_ARG}" ]; then
+  if [ -d "./linux/.git" ] || [ -f "./linux/.git" ]; then
+    GIT_DIR_ARG="./linux"
+  else
+    GIT_DIR_ARG="."
+  fi
+fi
+
+git_cmd() {
+  git -C "${GIT_DIR_ARG}" "$@"
+}
+
+if [ -z "${REPO_URL}" ]; then
+  BRANCH_NAME="$(git_cmd symbolic-ref --quiet --short HEAD || true)"
+  if [ -n "${BRANCH_NAME}" ]; then
+    REPO_URL="$(git_cmd config --get "branch.${BRANCH_NAME}.kdev-pull-repo" || true)"
+  fi
+  if [ -z "${REPO_URL}" ]; then
+    REPO_URL="git://git.kernel.org/pub/scm/linux/kernel/git/trace/linux-trace.git"
+  fi
+fi
+
+if [ -z "${PROLOG}" ]; then
+  PROLOG="/tmp/prog-${TAG}"
+fi
+
+SHA1="$(git_cmd rev-list --max-count=1 "${TAG}")"
+PATCHES="$(git_cmd rev-list --count "${FROM_SHA}..${TAG}")"
+
+if [ "${PATCHES}" -eq 0 ]; then
+  echo "Error: no commits in ${FROM_SHA}..${TAG}" >&2
+  exit 1
+fi
+
+print_tag_text() {
+  echo
+  git_cmd for-each-ref --format='%(contents)' "refs/tags/${TAG}" | perl -e '
+    while (<>) {
+      last if (/^-----BEGIN PGP SIGNATURE-----$/);
+      print;
+    }'
+  echo
+}
+
+get_emails() {
+  local authors
+  authors="$(git_cmd shortlog -e "${FROM_SHA}..${TAG}" | perl -e '
+    my $first = 1;
+    while (<>) {
+      if (m,^(.*) \(\d+\):,) {
+        next if ($1 =~ m/rostedt\@goodmis\.org/i);
+        next if ($1 =~ m/mhiramat\@kernel\.org/i);
+        next if ($1 =~ m/Ingo Molnar/i);
+        print ", " if (!$first);
+        print "$1";
+        $first = 0;
+      }
+    }')"
+  if [ -n "${authors}" ] && [ -n "${CC_EXTRA}" ]; then
+    printf '%s, %s\n' "${authors}" "${CC_EXTRA}"
+  elif [ -n "${authors}" ]; then
+    printf '%s\n' "${authors}"
+  else
+    printf '%s\n' "${CC_EXTRA}"
+  fi
+}
+
+TAGSHA1="$(git_cmd show-ref -s "refs/tags/${TAG}" | tail -n 1)"
+if [ -z "${TAGSHA1}" ]; then
+  TAGSHA1="$(git_cmd rev-parse "${TAG}")"
+fi
+
+BODY="$(print_tag_text)"
+NOTES=""
+if [ -f "${GIT_DIR_ARG}/notes" ]; then
+  NOTES="$(cat "${GIT_DIR_ARG}/notes")"
+fi
+
+COMMIT="$(git_cmd log --pretty=oneline -n 1 "${FROM_SHA}..${TAG}" | awk '{print $1}')"
+
+{
+  get_emails
+  echo ""
+  echo ""
+  echo "${WHO},"
+  echo ""
+  echo "${BODY}"
+  echo ""
+  if [ -n "${NOTES}" ]; then
+    echo "${NOTES}"
+    echo ""
+  fi
+  echo "Please pull the latest ${TAG} tree, which can be found at:"
+  echo ""
+  echo "  ${REPO_URL}"
+  echo "${TAG}"
+  echo ""
+  echo "Tag SHA1: ${TAGSHA1}"
+  echo "Head SHA1: ${SHA1}"
+  echo ""
+  echo ""
+  git_cmd shortlog "${FROM_SHA}..${TAG}"
+  echo "----"
+  git_cmd diff -M --stat --summary "${FROM_SHA}...${TAG}"
+  echo "---------------------------"
+  if [ "${PATCHES}" -eq 1 ]; then
+    git_cmd show "${COMMIT}"
+  else
+    git_cmd diff -M "${FROM_SHA}...${TAG}"
+  fi
+} > "${PROLOG}"
+
+echo "Generated pull request draft in ${PROLOG} (${PATCHES} commit(s))"
