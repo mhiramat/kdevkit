@@ -10,6 +10,10 @@ INSTALL_DEPS=0
 RUN_CONFIGURE=0
 SETUP_BACKEND=0
 SETUP_FRONTEND=0
+WITH_SASHIKO=0
+SASHIKO_PROVIDER=""
+SASHIKO_NO_BUILD=0
+SASHIKO_UPDATE=0
 KERNEL_SRC=""
 USE_WORKTREE=0
 WORKTREE_REF="HEAD"
@@ -34,6 +38,15 @@ Options:
   --configure               Run scripts/configure.sh after verifying kernel tree & tools.
   --setup-backend           Create backend/.venv and install the Kconfig Python backend.
   --setup-frontend          Install npm packages and build the VSCode extension frontend.
+  --with-sashiko            Shallow-clone and set up Sashiko (sashiko/) for agent-assisted
+                            Linux kernel patch review (scripts/setup_sashiko.sh).
+  --sashiko-provider <NAME> Configure Sashiko CLI LLM provider (auto, gemini, gemini-proxy,
+                            claude, claude-cli, copilot-cli, codex-cli, kiro-cli, goose,
+                            prompt-only). Implies --with-sashiko.
+  --sashiko-no-build        Skip building the Sashiko Rust binary (prompts-only setup for
+                            subagent review). Implies --with-sashiko.
+  --sashiko-update          Fetch the latest shallow Sashiko commit if already cloned.
+                            Implies --with-sashiko.
   -h, --help                Show this help message.
 
 Examples:
@@ -48,6 +61,12 @@ Examples:
 
   # Shallow-clone mainline Linux and run initial configuration
   ./setup.sh --kernel-src https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git --depth 1 --configure
+
+  # Shallow-clone Sashiko for agent-assisted kernel patch review (subagent default)
+  ./setup.sh --with-sashiko
+
+  # Shallow-clone Sashiko and auto-configure a local LLM/CLI provider for 'sashiko review --agent'
+  ./setup.sh --with-sashiko --sashiko-provider auto
 EOF
 }
 
@@ -71,6 +90,29 @@ while [ $# -gt 0 ]; do
       ;;
     --setup-frontend)
       SETUP_FRONTEND=1
+      shift
+      ;;
+    --with-sashiko)
+      WITH_SASHIKO=1
+      shift
+      ;;
+    --sashiko-provider)
+      SASHIKO_PROVIDER="${2:-}"
+      if [ -z "${SASHIKO_PROVIDER}" ]; then
+        echo "Error: --sashiko-provider requires a provider name." >&2
+        exit 1
+      fi
+      WITH_SASHIKO=1
+      shift 2
+      ;;
+    --sashiko-no-build)
+      SASHIKO_NO_BUILD=1
+      WITH_SASHIKO=1
+      shift
+      ;;
+    --sashiko-update)
+      SASHIKO_UPDATE=1
+      WITH_SASHIKO=1
       shift
       ;;
     --kernel-src)
@@ -279,6 +321,21 @@ if [ "${SETUP_FRONTEND}" -eq 1 ]; then
   echo "==> Setting up Kconfig VSCode Extension Frontend"
   "${WS_ROOT}/scripts/setup_kconfig_frontend.sh"
   "${WS_ROOT}/scripts/install_extension.sh"
+fi
+
+if [ "${WITH_SASHIKO}" -eq 1 ]; then
+  echo "==> Setting up Sashiko Agentic Patch Review"
+  SASHIKO_SETUP_ARGS=()
+  if [ -n "${SASHIKO_PROVIDER}" ]; then
+    SASHIKO_SETUP_ARGS+=("--provider" "${SASHIKO_PROVIDER}")
+  fi
+  if [ "${SASHIKO_NO_BUILD}" -eq 1 ]; then
+    SASHIKO_SETUP_ARGS+=("--no-build")
+  fi
+  if [ "${SASHIKO_UPDATE}" -eq 1 ]; then
+    SASHIKO_SETUP_ARGS+=("--update")
+  fi
+  "${WS_ROOT}/scripts/setup_sashiko.sh" "${SASHIKO_SETUP_ARGS[@]}"
 fi
 
 echo "==> Setup complete!"

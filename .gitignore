@@ -35,3 +35,6 @@ __pycache__/
 
 # Independent Lean formal verification repository
 /lean/
+
+# Shallow-cloned Sashiko patch review repository
+/sashiko/
