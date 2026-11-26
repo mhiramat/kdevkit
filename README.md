@@ -16,6 +16,7 @@ Target host: `x86_64` Linux.
 | **IDE & LSP** | VSCode, `clangd` (v16+ recommended), extension `llvm-vs-code-extensions.vscode-clangd` | Optional: `luveti.kconfig`. Microsoft `C_Cpp` IntelliSense is disabled in workspace settings. |
 | **Guest RootFS** | Statically linked `busybox` (`busybox-static`) | Verified via `ldd` by `setup.sh` and `scripts/build_initramfs.sh`. |
 | **Emulation** | `qemu-system-x86_64` (`qemu-system-x86`) | `/dev/kvm` access recommended for hardware acceleration; falls back to TCG automatically. |
+| **Patch Review (Optional)** | `git` (always), Rust 1.90+ via `rustup` (for Sashiko CLI binary), LLM API key or local agent CLI (`claude`, `copilot`, `codex`, etc.) | Required only when using `./setup.sh --with-sashiko` in CLI mode. Subagent prompt-based review works with `git` alone (`--sashiko-no-build`). |
 
 On Debian/Ubuntu, you can install all host dependencies with:
 
@@ -55,6 +56,20 @@ If you only want to verify host prerequisites and initialize the directory layou
 
 ```bash
 ./setup.sh
+```
+
+To also shallow-clone and set up [Sashiko](https://github.com/sashiko-dev/sashiko) for agent-assisted Linux kernel patch review:
+
+```bash
+# Default: shallow-clone Sashiko (and build binary if Rust 1.90+ is available);
+# subagent prompt-based review is used by default until an API/provider is configured
+./setup.sh --with-sashiko
+
+# Or explicitly configure a Sashiko CLI provider (auto, gemini, gemini-proxy, claude-cli, copilot-cli, codex-cli, ...)
+./setup.sh --with-sashiko --sashiko-provider auto
+
+# Fast prompts-only setup (skip Rust build; subagent prompt-based review only)
+./setup.sh --with-sashiko --sashiko-no-build
 ```
 
 ### Step 2: Open the Parent Workspace in VSCode
@@ -147,13 +162,20 @@ Once installed, open the Command Palette (`Ctrl+Shift+P`) and run:
 │   ├── build_initramfs.sh          # Rootless static BusyBox + modules + /init cpio.gz builder
 │   ├── build_selftest.sh           # Out-of-tree kselftest builder with auto-libs/static staging
 │   ├── run_qemu.sh                 # QEMU launcher with 9p hostshare & KVM auto-detection
+│   ├── setup_sashiko.sh            # Shallow-clones, builds, and configures Sashiko
+│   ├── run_sashiko.sh              # Parent-workspace wrapper for 'sashiko review' on linux/
 │   └── install_extension.sh        # Symlinks extension/ into local VSCode/Antigravity extensions dir
+├── .agents/skills/                 # AI coding agent skills
+│   ├── kdev-build-and-boot/        # Kernel configure, build, initramfs & QEMU workflow
+│   ├── kdev-pull-request/          # Maintainer pull request draft generator
+│   └── linux-sashiko-review/       # Sashiko-powered Linux patch series review skill
 ├── build/
 │   └── current/                    # Active out-of-tree build directory (O=)
 │       ├── layers.json             # Per-profile declarative Kconfig layer manifest
 │       ├── solver_overlay.config   # Auto-generated Kconfig solver diff overlay
 │       ├── user_injected/          # Symlinked user/selftest Kconfig fragments
 │       └── shared/                 # 9p VirtIO shared directory (Host <-> Guest /mnt/host)
+├── sashiko/                        # Optional shallow-cloned Sashiko repository (gitignored)
 └── linux/                          # Upstream Linux kernel Git repository (untouched)
 ```
 
@@ -236,6 +258,58 @@ You can also build and stage selftest targets directly from a terminal into `bui
 
 Key VSCode settings under `kdev.selftest.*`: `targets`, `linkMode` (`"auto-libs"` | `"static"`), `targetOptions` (per-target overrides), `checkConfigBeforeRun` (`"prompt"` | `"off"`), `timeoutSec`, `bootTimeoutSec`, and `autoBuildBeforeRun`.
 
+### 5.6 Patch Series Review with Sashiko (`linux-sashiko-review`)
+
+`kdevkit` integrates [Sashiko](https://github.com/sashiko-dev/sashiko) for automated, agent-assisted review of Linux kernel patch series under `linux/` without modifying or polluting the kernel tree.
+
+#### Setup
+
+```bash
+# Shallow-clone Sashiko into ./sashiko and build the lightweight local-review binary
+# (requires Rust 1.90+ via rustup; gracefully skips build if Rust is absent)
+./setup.sh --with-sashiko
+
+# Update an existing shallow checkout to the latest upstream revision
+./setup.sh --with-sashiko --sashiko-update
+
+# Explicitly configure a Sashiko CLI LLM provider in .kdev/sashiko.toml
+# Supported: auto, gemini, gemini-proxy, claude, claude-cli, copilot-cli, codex-cli, kiro-cli, goose, prompt-only
+./setup.sh --with-sashiko --sashiko-provider auto
+
+# Prompts-only setup without building Rust (subagent prompt-based review only)
+./setup.sh --with-sashiko --sashiko-no-build
+```
+
+#### Two Review Modes (Agent Skill: `linux-sashiko-review`)
+
+Ask your AI coding agent to review your current branch or commit range in `linux/` (invoking the [`.agents/skills/linux-sashiko-review/SKILL.md`](./.agents/skills/linux-sashiko-review/SKILL.md) skill). The active mode can be checked anytime with `./scripts/run_sashiko.sh --check`:
+
+1. **Subagent Prompt-Based Mode *(default when no Sashiko API/provider is explicitly configured)*:**
+   * Delegates review to a read-only subagent using Sashiko's three-layer Linux prompt guides under `sashiko/projects/linux/prompts/` (universal rules, matched `maintainers/*.md`, and `notes/`).
+   * Requires no separate API key, keeps parent conversation context clean, and avoids unintended external API/CLI quota usage.
+2. **Sashiko CLI Mode (`sashiko review --agent`) *(when an API key or `--sashiko-provider` is explicitly configured)*:**
+   * Runs Sashiko's full Rust multi-stage pipeline (`goal`, `implementation`, `execution-flow`, `resources`, `locking`, `security`, `performance`, `hardware` → `verification` → parallel `post-verification`) and parses its structured JSON output.
+   * Use `--cheap` during iterative development (or with subscription-based CLI providers like `claude-cli` / `copilot-cli` / `codex-cli`) to combine exploratory stages into one pass and reduce token usage by ~3–5×; run full mode before upstream submission.
+
+#### Running Directly from the CLI (`scripts/run_sashiko.sh`)
+
+```bash
+# Check active mode (cli vs subagent)
+./scripts/run_sashiko.sh --check
+
+# Dry-run commit extraction & config validation (no LLM calls)
+./scripts/run_sashiko.sh --no-ai --agent HEAD~1..HEAD
+
+# Fast iterative agent review of the last 3 commits in linux/
+./scripts/run_sashiko.sh --agent --cheap HEAD~3..HEAD
+
+# Full pre-submission review with series-level design assessment
+./scripts/run_sashiko.sh --agent --design origin/master..HEAD
+
+# Resume an interrupted review
+./scripts/run_sashiko.sh --agent --resume origin/master..HEAD
+```
+
 ---
 
 ## 6. Environment Customization
@@ -255,6 +329,10 @@ All scripts source [`scripts/env.sh`](./scripts/env.sh) and respect environment 
 | `QEMU_MEM` | `2G` | Guest RAM allocation. |
 | `QEMU_SMP` | `2` | Guest vCPU count. |
 | `SELFTEST_LINK_MODE` | `auto-libs` | Selftest C binary mode (`auto-libs` or `static`). |
+| `SASHIKO_DIR` | `${WS_ROOT}/sashiko` | Path to shallow-cloned Sashiko repository. |
+| `SASHIKO_REPO_URL` | `https://github.com/sashiko-dev/sashiko.git` | Git URL cloned by `scripts/setup_sashiko.sh`. |
+| `SASHIKO_CONFIG` | `${WS_ROOT}/.kdev/sashiko.toml` | Local Sashiko TOML configuration file (mode `600`). |
+| `SASHIKO_BIN` | `${SASHIKO_DIR}/target/release/sashiko` | Path to the built Sashiko CLI binary. |
 | `LLVM` / `MAKE_ARGS` | *(unset)* | Optional flags forwarded to `make` (e.g. `LLVM=1`). |
 
 ---
