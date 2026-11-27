@@ -49,12 +49,29 @@ It supports **two execution modes**:
      BASE_SHA="$(git -C linux merge-base "${BASE_REF}" HEAD)"
      RANGE="${BASE_SHA}..HEAD"
      ```
-2. **Inspect the series and working tree**:
+2. **Inspect the series, working tree, and stray non-ASCII characters**:
    ```bash
    git -C linux status --short
    git -C linux log --reverse --oneline "${RANGE}"
    git -C linux diff --stat "${RANGE}"
    ```
+   - **Deterministic Non-ASCII Character Check (Mandatory)**:
+     Scan all added diff lines (`+` lines) and commit messages in `${RANGE}` for stray non-ASCII characters (such as typographic dashes `U+2014`/`U+2013`, smart quotes `U+2018`–`U+201D`, or non-breaking spaces `U+00A0`), which break ASCII-only kernel style and disable SideDiff in UndineD:
+     ```bash
+     git -C linux log --reverse -p "${RANGE}" | python3 -c '
+     import sys
+     commit = ""
+     for lineno, line in enumerate(sys.stdin, 1):
+         if line.startswith("commit "):
+             commit = line.split()[1][:12]
+         if line.startswith(("+++", "---", "Author:", "Signed-off-by:", "Reviewed-by:", "Acked-by:", "Co-developed-by:", "Reported-by:", "Tested-by:")):
+             continue
+         for col, ch in enumerate(line, 1):
+             if ord(ch) > 127:
+                 print(f"{commit} line {lineno} col {col} U+{ord(ch):04X} {ch!r}: {line.rstrip()}")
+     '
+     ```
+     Flag any unintended non-ASCII characters in code, comments, commit messages, or English documentation (`Documentation/translations/` and human names in headers/trailers are exempt) as a `Low` finding to fix before submission.
    - If `git -C linux status --short` shows uncommitted changes, warn the user that Sashiko reviews committed git ranges (and confirm whether to review committed patches only or include uncommitted diffs in Mode B).
    - If the range is empty (0 commits), stop and ask the user for the intended commit range or base ref.
 
