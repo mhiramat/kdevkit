@@ -168,6 +168,7 @@ Once installed, open the Command Palette (`Ctrl+Shift+P`) and run:
 ├── .agents/skills/                 # AI coding agent skills
 │   ├── kdev-build-and-boot/        # Kernel configure, build, initramfs & QEMU workflow
 │   ├── kdev-patch-series/          # Patch series preflight, UndineD staging & v2+ iteration
+│   ├── kdev-patch-triage/          # UndineD TODO folder patch triage & $cl_1-$cl_3/$cl_5 tagging
 │   ├── kdev-pull-request/          # Maintainer pull request draft generator
 │   └── linux-sashiko-review/       # Sashiko-powered Linux patch series review skill
 ├── build/
